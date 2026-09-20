@@ -1,0 +1,15 @@
+/* Tokens de diseño portados de kontable-prototipo_1.html (:root). */
+:root {
+  --verde: #1e3431;
+  --verde-suave: #2e4e49;
+  --verde-tint: #4c7768;
+  --terracota: #bc5539;
+  --terracota-dark: #8c3d28;
+  --beige: #dfd0c3;
+  --gris-claro: #f4f4f2;
+  --blanco: #ffffff;
+  --gris-oscuro: #333333;
+  --gris-medio: #7a7a76;
+  --font-display: 'Newsreader', serif;
+  --font-body: 'Inter', sans-serif;
+}
