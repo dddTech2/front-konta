@@ -7,7 +7,9 @@ import type {
   InvoicesListResponse,
   IvaDetailResponse,
   SaleCreatePayload,
+  SaleListResponse,
   SaleResponse,
+  SaleVoidResponse,
 } from './types';
 
 /** Endpoints de datos del negocio activo. El manejo de 401/403/red vive solo en `apiFetch` (ADR-005). */
@@ -51,3 +53,13 @@ export const registerSale = (businessId: string, payload: SaleCreatePayload): Pr
 /** Ingresos, egresos y utilidad del mes `YYYY-MM` de un negocio de ventas manuales (404 para DIAN). */
 export const getIncomeSummary = (businessId: string, month: string): Promise<IncomeSummaryResponse> =>
   apiFetch<IncomeSummaryResponse>(`${businessPath('income-summary', businessId)}?month=${encodeURIComponent(month)}`);
+
+/** Ventas del mes `YYYY-MM` de un negocio de ventas manuales (Story 6.5). */
+export const getSales = (businessId: string, month: string): Promise<SaleListResponse> =>
+  apiFetch<SaleListResponse>(`${businessPath('sales', businessId)}?month=${encodeURIComponent(month)}`);
+
+/** Anula una venta de ventas manuales (Story 6.5). */
+export const voidSale = (businessId: string, saleId: string): Promise<SaleVoidResponse> =>
+  apiFetch<SaleVoidResponse>(`${businessPath('sales', businessId)}/${encodeURIComponent(saleId)}/void`, {
+    method: 'POST',
+  });

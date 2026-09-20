@@ -121,6 +121,26 @@ export interface SaleResponse {
   created_at: string;
 }
 
+/** Espejo de `api/schemas.py`, Story 6.5. */
+export interface SaleListItem {
+  id: string;
+  total_amount: string;
+  description: string | null;
+  recorded_via: string;
+  sale_date: string;
+  created_at: string;
+}
+
+export interface SaleListResponse {
+  month: string;
+  sales: SaleListItem[];
+}
+
+export interface SaleVoidResponse {
+  id: string;
+  voided_at: string;
+}
+
 export type GroupType = 'Emitido' | 'Recibido';
 
 export interface InvoiceDetailItem {

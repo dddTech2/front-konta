@@ -2,7 +2,7 @@ import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { getToken, setToken } from '../auth/session';
-import { INCOME_SUMMARY } from '../test/fixtures';
+import { INCOME_SUMMARY, SALES_LIST } from '../test/fixtures';
 import { ME_MANUAL, ME_OK, mockApi, renderApp, resetSession, type MockReply } from '../test/utils';
 
 const SALE_CREATED = {
@@ -99,6 +99,7 @@ describe('SalesForm', () => {
       'GET /api/auth/me': { body: { ...ME_MANUAL, business_id: 'biz-9' } },
       'POST /api/sales/biz-9': { status: 201, body: SALE_CREATED },
       'GET /api/income-summary/biz-9': { body: INCOME_SUMMARY },
+      'GET /api/sales/biz-9': { body: SALES_LIST },
     });
     const user = userEvent.setup();
     renderApp('/inicio');
@@ -404,3 +405,225 @@ describe('SalesForm', () => {
     expect(screen.getByText('$1.250.000')).toBeInTheDocument();
   });
 });
+
+describe('Ventas del mes y anulación', () => {
+  it('la lista muestra las dos ventas con monto, fecha corta y "Sin descripción" y un botón "Anular" por venta', async () => {
+    mockApi({ 'GET /api/auth/me': { body: ME_MANUAL } });
+    renderApp('/inicio');
+
+    const section = await screen.findByRole('region', { name: 'Ventas del mes' });
+    expect(within(section).getByText('$150.000')).toBeInTheDocument();
+    expect(within(section).getByText('18 sep 2026 · 3 tortas')).toBeInTheDocument();
+    expect(within(section).getByRole('button', { name: 'Anular venta de $150.000' })).toBeInTheDocument();
+
+    expect(within(section).getByText('$40.000,50')).toBeInTheDocument();
+    expect(within(section).getByText('12 sep 2026 · Sin descripción')).toBeInTheDocument();
+    expect(within(section).getByRole('button', { name: 'Anular venta de $40.000,50' })).toBeInTheDocument();
+
+    const voidButtons = within(section).getAllByRole('button', { name: /Anular venta/ });
+    expect(voidButtons).toHaveLength(2);
+  });
+
+  it('"Anular" pide confirmación y "Cancelar" la cierra sin llamar a la API', async () => {
+    const api = mockApi({ 'GET /api/auth/me': { body: ME_MANUAL } });
+    const user = userEvent.setup();
+    renderApp('/inicio');
+
+    const section = await screen.findByRole('region', { name: 'Ventas del mes' });
+    const button = within(section).getByRole('button', { name: 'Anular venta de $150.000' });
+    await user.click(button);
+
+    const group = await within(section).findByRole('group', { name: 'Confirmar anulación' });
+    expect(group).toHaveTextContent('¿Anular esta venta? No podrás deshacerlo.');
+    expect(within(group).getByRole('button', { name: 'Sí, anular' })).toBeInTheDocument();
+    expect(within(group).getByRole('button', { name: 'Cancelar' })).toBeInTheDocument();
+
+    await user.click(within(group).getByRole('button', { name: 'Cancelar' }));
+
+    expect(within(section).queryByRole('group', { name: 'Confirmar anulación' })).not.toBeInTheDocument();
+    expect(within(section).getByRole('button', { name: 'Anular venta de $150.000' })).toBeInTheDocument();
+    expect(api.calls.some((c) => c.method === 'POST' && c.path.includes('/void'))).toBe(false);
+  });
+
+  it('confirmar llama POST /void, refresca la lista y el resumen, y omite la venta anulada', async () => {
+    const api = mockApi({
+      'GET /api/auth/me': { body: ME_MANUAL },
+      'POST /api/sales/biz-1/s-1/void': { body: { id: 's-1', voided_at: '2026-09-20T12:00:00' } },
+    });
+    const user = userEvent.setup();
+    renderApp('/inicio');
+
+    const section = await screen.findByRole('region', { name: 'Ventas del mes' });
+    await screen.findByText('$150.000');
+
+    // Cambiamos la respuesta de la lista para cuando se vuelva a consultar: ya no incluye s-1
+    api.set('GET /api/sales/biz-1', {
+      body: {
+        month: '2026-09',
+        sales: [SALES_LIST.sales[1]],
+      },
+    });
+
+    const voidBtn = within(section).getByRole('button', { name: 'Anular venta de $150.000' });
+    await user.click(voidBtn);
+
+    const confirmBtn = within(section).getByRole('button', { name: 'Sí, anular' });
+    await user.click(confirmBtn);
+
+    await waitFor(() => {
+      const postCalls = api.calls.filter((c) => c.method === 'POST' && c.path.includes('/void'));
+      expect(postCalls).toHaveLength(1);
+      expect(postCalls[0].path).toBe('/api/sales/biz-1/s-1/void');
+    });
+
+    await waitFor(() => {
+      const salesCalls = api.calls.filter((c) => c.method === 'GET' && c.path.startsWith('/api/sales/biz-1'));
+      expect(salesCalls).toHaveLength(2);
+    });
+
+    await waitFor(() => {
+      const summaryCalls = api.calls.filter((c) => c.method === 'GET' && c.path.startsWith('/api/income-summary/biz-1'));
+      expect(summaryCalls).toHaveLength(2);
+    });
+
+    await waitFor(() => {
+      expect(within(section).queryByText('$150.000')).not.toBeInTheDocument();
+    });
+    expect(within(section).getByText('$40.000,50')).toBeInTheDocument();
+  });
+
+  it('doble clic en "Sí, anular": una sola llamada POST', async () => {
+    let releaseVoid: (reply: MockReply) => void = () => undefined;
+    const api = mockApi({
+      'GET /api/auth/me': { body: ME_MANUAL },
+      'POST /api/sales/biz-1/s-1/void': () =>
+        new Promise<MockReply>((resolve) => {
+          releaseVoid = resolve;
+        }),
+    });
+    const user = userEvent.setup();
+    renderApp('/inicio');
+
+    const section = await screen.findByRole('region', { name: 'Ventas del mes' });
+    await user.click(within(section).getByRole('button', { name: 'Anular venta de $150.000' }));
+
+    const submit = within(section).getByRole('button', { name: 'Sí, anular' });
+    await user.dblClick(submit);
+
+    const postCalls = api.calls.filter((c) => c.method === 'POST' && c.path.includes('/void'));
+    expect(postCalls).toHaveLength(1);
+    expect(within(section).getByRole('button', { name: 'Anulando…' })).toBeDisabled();
+
+    await act(async () => {
+      releaseVoid({ body: { id: 's-1', voided_at: '2026-09-20T12:00:00' } });
+    });
+
+    await waitFor(() => {
+      expect(within(section).queryByRole('button', { name: 'Anulando…' })).not.toBeInTheDocument();
+    });
+    expect(api.calls.filter((c) => c.method === 'POST' && c.path.includes('/void'))).toHaveLength(1);
+  });
+
+  it('409 muestra el mensaje del servidor con role="alert" y recarga la lista', async () => {
+    const api = mockApi({
+      'GET /api/auth/me': { body: ME_MANUAL },
+      'POST /api/sales/biz-1/s-1/void': {
+        status: 409,
+        body: { detail: 'Esta venta ya fue anulada.' },
+      },
+    });
+    const user = userEvent.setup();
+    renderApp('/inicio');
+
+    const section = await screen.findByRole('region', { name: 'Ventas del mes' });
+    await user.click(within(section).getByRole('button', { name: 'Anular venta de $150.000' }));
+    await user.click(within(section).getByRole('button', { name: 'Sí, anular' }));
+
+    const alert = await within(section).findByRole('alert');
+    expect(alert).toHaveTextContent('Esta venta ya fue anulada.');
+
+    await waitFor(() => {
+      const salesCalls = api.calls.filter((c) => c.method === 'GET' && c.path.startsWith('/api/sales/biz-1'));
+      expect(salesCalls).toHaveLength(2);
+    });
+  });
+
+  it('401 al anular vuelve al login sin mostrar error en la fila', async () => {
+    mockApi({
+      'GET /api/auth/me': { body: ME_MANUAL },
+      'POST /api/sales/biz-1/s-1/void': {
+        status: 401,
+        body: { detail: 'Sesión expirada.' },
+      },
+    });
+    const user = userEvent.setup();
+    renderApp('/inicio');
+
+    const section = await screen.findByRole('region', { name: 'Ventas del mes' });
+    await user.click(within(section).getByRole('button', { name: 'Anular venta de $150.000' }));
+    await user.click(within(section).getByRole('button', { name: 'Sí, anular' }));
+
+    expect(await screen.findByLabelText('Celular o NIT')).toBeInTheDocument();
+    expect(getToken()).toBeNull();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('lista vacía muestra "No hay ventas registradas en este mes."', async () => {
+    mockApi({
+      'GET /api/auth/me': { body: ME_MANUAL },
+      'GET /api/sales/biz-1': { body: { month: '2026-09', sales: [] } },
+    });
+    renderApp('/inicio');
+
+    const section = await screen.findByRole('region', { name: 'Ventas del mes' });
+    expect(await within(section).findByText('No hay ventas registradas en este mes.')).toBeInTheDocument();
+    expect(within(section).queryByRole('list')).not.toBeInTheDocument();
+  });
+
+  it('error 500 en la lista muestra el bloque de error con "Reintentar" sin afectar el Resumen (las cifras siguen visibles)', async () => {
+    const user = userEvent.setup();
+    const api = mockApi({
+      'GET /api/auth/me': { body: ME_MANUAL },
+      'GET /api/sales/biz-1': { status: 500, body: { detail: 'Error al cargar ventas.' } },
+    });
+    renderApp('/inicio');
+
+    const resumenSection = await screen.findByRole('region', { name: 'Resumen' });
+    expect(within(resumenSection).getByText('$1.100.000')).toBeInTheDocument();
+    expect(within(resumenSection).getByText('$1.500.000')).toBeInTheDocument();
+    expect(within(resumenSection).getByText('$400.000')).toBeInTheDocument();
+
+    const salesSection = within(resumenSection).getByRole('region', { name: 'Ventas del mes' });
+    const alert = within(salesSection).getByRole('alert');
+    expect(alert).toHaveTextContent('Error al cargar ventas.');
+
+    api.set('GET /api/sales/biz-1', { body: SALES_LIST });
+    await user.click(within(alert).getByRole('button', { name: 'Reintentar' }));
+
+    expect(await within(salesSection).findByText('$150.000')).toBeInTheDocument();
+    expect(within(salesSection).queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('tras registrar una venta desde el formulario la lista se vuelve a consultar', async () => {
+    const api = mockApi({
+      'GET /api/auth/me': { body: ME_MANUAL },
+      'POST /api/sales/biz-1': { status: 201, body: SALE_CREATED },
+    });
+    const user = userEvent.setup();
+    renderApp('/inicio');
+
+    await screen.findByRole('region', { name: 'Ventas del mes' });
+    const initialSalesCalls = api.calls.filter((c) => c.method === 'GET' && c.path.startsWith('/api/sales/'));
+    expect(initialSalesCalls).toHaveLength(1);
+
+    const dialog = await openForm(user);
+    await user.type(within(dialog).getByLabelText('Total de la venta'), '150000.00');
+    await user.click(within(dialog).getByRole('button', { name: 'Guardar venta' }));
+
+    await waitFor(() => {
+      const salesCalls = api.calls.filter((c) => c.method === 'GET' && c.path.startsWith('/api/sales/'));
+      expect(salesCalls).toHaveLength(2);
+    });
+  });
+});
+

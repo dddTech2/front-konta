@@ -6,6 +6,7 @@ import type {
   InvoicesListResponse,
   IvaDetailResponse,
   IvaPeriodItem,
+  SaleListResponse,
 } from '../api/types';
 import type { MockReply } from './utils';
 
@@ -165,6 +166,28 @@ export const CALENDAR: CalendarResponse = {
   ],
 };
 
+export const SALES_LIST: SaleListResponse = {
+  month: '2026-09',
+  sales: [
+    {
+      id: 's-1',
+      total_amount: '150000.00',
+      description: '3 tortas',
+      recorded_via: 'WEB',
+      sale_date: '2026-09-18',
+      created_at: '2026-09-18T15:00:00',
+    },
+    {
+      id: 's-2',
+      total_amount: '40000.50',
+      description: null,
+      recorded_via: 'WEB',
+      sale_date: '2026-09-12',
+      created_at: '2026-09-12T10:00:00',
+    },
+  ],
+};
+
 /** Respuestas por defecto de las pantallas de datos, para las pruebas que solo miran el shell. */
 export const DATA_ROUTES: Record<string, MockReply> = {
   [`GET /api/dashboard/${BUSINESS_ID}`]: { body: DASHBOARD },
@@ -172,5 +195,7 @@ export const DATA_ROUTES: Record<string, MockReply> = {
   [`GET /api/calendar/${BUSINESS_ID}`]: { body: CALENDAR },
   [`GET /api/invoices/${BUSINESS_ID}`]: { body: INVOICES },
   [`GET /api/income-summary/${BUSINESS_ID}`]: { body: INCOME_SUMMARY },
+  [`GET /api/sales/${BUSINESS_ID}`]: { body: SALES_LIST },
 };
+
 

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { getIncomeSummary } from '../api/endpoints';
+import RecentSales from '../components/RecentSales';
 import { ResourceView } from '../components/ScreenState';
 import { fmtMoneyExact, fmtPeriod, recentMonths } from '../format';
 import { useResource } from '../hooks/useResource';
@@ -13,6 +14,7 @@ import '../styles/screens.css';
 export default function Resumen({ businessId, refreshKey = 0 }: { businessId: string; refreshKey?: number }) {
   const months = recentMonths(6);
   const [month, setMonth] = useState<string>(() => months[0]);
+  const [voidVersion, setVoidVersion] = useState(0);
   const prevRefreshKey = useRef(refreshKey);
 
   useEffect(() => {
@@ -22,7 +24,10 @@ export default function Resumen({ businessId, refreshKey = 0 }: { businessId: st
     }
   }, [refreshKey]);
 
-  const { state, retry } = useResource(() => getIncomeSummary(businessId, month), [businessId, month, refreshKey]);
+  const { state, retry } = useResource(
+    () => getIncomeSummary(businessId, month),
+    [businessId, month, refreshKey, voidVersion],
+  );
 
   return (
     <section aria-label="Resumen" className="screen">
@@ -65,6 +70,12 @@ export default function Resumen({ businessId, refreshKey = 0 }: { businessId: st
           );
         }}
       </ResourceView>
+      <RecentSales
+        businessId={businessId}
+        month={month}
+        refreshKey={refreshKey}
+        onVoided={() => setVoidVersion((n) => n + 1)}
+      />
     </section>
   );
 }
