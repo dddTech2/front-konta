@@ -1,50 +1,21 @@
-import { getIva } from '../api/endpoints';
-import type { IvaDetailResponse, IvaPeriodItem } from '../api/types';
+import { ApiError } from '../api/client';
+import { getCalendar } from '../api/endpoints';
+import type { CalendarObligation, CalendarResponse } from '../api/types';
 import { Icon } from '../components/Icon';
 import { ResourceView } from '../components/ScreenState';
 import { StatusDot } from '../components/StatusDot';
-import { estadoColor } from '../format';
+import { estadoColor, fmtDeadline, taxLabel } from '../format';
 import { useResource } from '../hooks/useResource';
 import '../styles/screens.css';
 
-/** Umbral del prototipo (`DB.calendario`): a 10 días o menos el vencimiento se marca "próximo". */
-const PROXIMO_DIAS = 10;
-
-type CalendarState = 'completado' | 'proximo' | 'aldia';
-
-interface Obligation {
-  key: string;
-  titulo: string;
-  detalle: string;
-  estado: CalendarState;
-  dias: number | null;
-}
-
-/** Solo IVA: cada periodo de `/api/iva` es una obligación. No hay endpoint de calendario (Story 4.1 pendiente). */
-export function deriveObligations(periodos: IvaPeriodItem[]): Obligation[] {
-  return periodos.map((period) => {
-    let estado: CalendarState;
-    if (period.estado === 'presentado') estado = 'completado';
-    else estado = period.dias !== null && period.dias <= PROXIMO_DIAS ? 'proximo' : 'aldia';
-    return {
-      key: period.period_key,
-      titulo: 'Declaración de IVA',
-      detalle: `${period.etiqueta} · ${period.limite}`,
-      estado,
-      dias: period.dias,
-    };
-  });
-}
-
-function pillLabel(item: Obligation): string {
+function pillLabel(item: CalendarObligation): string {
   if (item.estado === 'completado') return 'Completado';
-  if (item.dias === null) return 'Al día';
   if (item.dias === 0) return 'Vence hoy';
-  if (item.dias > 0) return `En ${item.dias} ${item.dias === 1 ? 'día' : 'días'}`;
-  return 'Venció';
+  if (item.dias !== null && item.dias > 0) return `En ${item.dias} ${item.dias === 1 ? 'día' : 'días'}`;
+  return 'Al día';
 }
 
-function ObligationList({ items, empty }: { items: Obligation[]; empty: string }) {
+function ObligationList({ items, empty }: { items: CalendarObligation[]; empty: string }) {
   if (items.length === 0) {
     return (
       <div className="card list-card">
@@ -55,14 +26,14 @@ function ObligationList({ items, empty }: { items: Obligation[]; empty: string }
   return (
     <ul className="card list-card plain-list">
       {items.map((item) => (
-        <li className="list-row" key={item.key}>
+        <li className="list-row" key={`${item.tax_type}|${item.etiqueta}|${item.fecha_limite}`}>
           <div className="row-lead">
             <div className="icon-tile">
               <Icon name="calendar" />
             </div>
             <div>
-              <p className="row-title">{item.titulo}</p>
-              <p className="row-sub">{item.detalle}</p>
+              <p className="row-title">{taxLabel(item.tax_type)}</p>
+              <p className="row-sub">{`${item.etiqueta} · ${fmtDeadline(item.fecha_limite)}`}</p>
             </div>
           </div>
           <span className="due-pill" style={{ color: estadoColor(item.estado) }}>
@@ -74,12 +45,23 @@ function ObligationList({ items, empty }: { items: Obligation[]; empty: string }
   );
 }
 
-function CalendarContent({ data }: { data: IvaDetailResponse }) {
-  const obligations = deriveObligations(data.periodos);
-  const upcoming = obligations
-    .filter((item) => item.estado !== 'completado')
-    .sort((a, b) => (a.dias ?? Number.POSITIVE_INFINITY) - (b.dias ?? Number.POSITIVE_INFINITY));
-  const done = obligations.filter((item) => item.estado === 'completado');
+function CalendarContent({ data }: { data: CalendarResponse | null }) {
+  if (data === null) {
+    return (
+      <div className="card list-card" role="status">
+        <h2 className="group-title" style={{ paddingTop: '12px' }}>
+          Calendario no disponible
+        </h2>
+        <p className="list-empty">
+          Aún no tenemos cargado el calendario tributario de este año. Inténtalo de nuevo más tarde.
+        </p>
+      </div>
+    );
+  }
+
+  const upcoming = data.obligaciones.filter((item) => item.estado === 'proximo' || item.estado === 'aldia');
+  const done = data.obligaciones.filter((item) => item.estado === 'completado');
+
   return (
     <>
       <h2 className="group-title">Próximas ({upcoming.length})</h2>
@@ -91,7 +73,14 @@ function CalendarContent({ data }: { data: IvaDetailResponse }) {
 }
 
 export default function Calendario({ businessId }: { businessId: string }) {
-  const { state, retry } = useResource(() => getIva(businessId), [businessId]);
+  const { state, retry } = useResource(
+    () =>
+      getCalendar(businessId).catch((error: unknown) => {
+        if (error instanceof ApiError && error.status === 409) return null;
+        throw error;
+      }),
+    [businessId],
+  );
   return (
     <section aria-label="Calendario" className="screen">
       <h1 className="screen-title">Calendario de vencimientos</h1>

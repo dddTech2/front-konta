@@ -1,5 +1,6 @@
 import { apiFetch } from './client';
 import type {
+  CalendarResponse,
   DashboardResponse,
   GroupType,
   IncomeSummaryResponse,
@@ -17,6 +18,9 @@ export const getDashboard = (businessId: string): Promise<DashboardResponse> =>
 
 export const getIva = (businessId: string): Promise<IvaDetailResponse> =>
   apiFetch<IvaDetailResponse>(businessPath('iva', businessId));
+
+export const getCalendar = (businessId: string): Promise<CalendarResponse> =>
+  apiFetch<CalendarResponse>(businessPath('calendar', businessId));
 
 export const INVOICES_PAGE_SIZE = 50;
 

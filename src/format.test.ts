@@ -1,5 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { estadoColor, fmtMoney, fmtMoneyExact, fmtNit, fmtPercent, fmtPeriod, recentMonths, vencePhrase } from './format';
+import {
+  estadoColor,
+  fmtDeadline,
+  fmtMoney,
+  fmtMoneyExact,
+  fmtNit,
+  fmtPercent,
+  fmtPeriod,
+  recentMonths,
+  taxLabel,
+  vencePhrase,
+} from './format';
 
 describe('format', () => {
   it('fmtMoney usa es-CO como el prototipo: $12.450.000', () => {
@@ -21,6 +32,24 @@ describe('format', () => {
     expect(fmtPeriod('2026-08')).toBe('Agosto 2026');
     expect(fmtPeriod('2026-13')).toBe('2026-13');
     expect(fmtPeriod('Jul – Ago 2026')).toBe('Jul – Ago 2026');
+  });
+
+  it('fmtDeadline convierte YYYY-MM-DD a día sin cero, mes en tres letras y año', () => {
+    expect(fmtDeadline('2026-09-14')).toBe('14 sep 2026');
+    expect(fmtDeadline('2026-01-05')).toBe('5 ene 2026');
+    expect(fmtDeadline('2026-12-01')).toBe('1 dic 2026');
+    expect(fmtDeadline('invalido')).toBe('invalido');
+    expect(fmtDeadline('10 sept 2026')).toBe('10 sept 2026');
+  });
+
+  it('taxLabel mapea tipos conocidos a sus etiquetas y tolera null o desconocidos', () => {
+    expect(taxLabel('IVA_BIMESTRAL')).toBe('Declaración de IVA');
+    expect(taxLabel('IVA_CUATRIMESTRAL')).toBe('Declaración de IVA');
+    expect(taxLabel('RETEFUENTE')).toBe('Retención en la fuente');
+    expect(taxLabel('RENTA_PERSONAS_NATURALES')).toBe('Declaración de renta');
+    expect(taxLabel('RENTA_PERSONAS_JURIDICAS')).toBe('Declaración de renta');
+    expect(taxLabel(null)).toBe('');
+    expect(taxLabel('ICA_BIMESTRAL')).toBe('ICA_BIMESTRAL');
   });
 
   it('fmtNit agrupa miles y agrega el dígito de verificación', () => {

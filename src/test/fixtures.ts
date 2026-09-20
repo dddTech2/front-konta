@@ -1,4 +1,5 @@
 import type {
+  CalendarResponse,
   DashboardResponse,
   IncomeSummaryResponse,
   InvoiceDetailItem,
@@ -36,7 +37,13 @@ export const DASHBOARD: DashboardResponse = {
     { id: 'i4', num: 'FE-498', fecha: '11 ago', cliente: 'Tienda Norte', valor: 640000, iva: 121600, tipo: 'Emitido' },
     { id: 'i5', num: 'FE-497', fecha: '05 ago', cliente: 'Cliente quinto', valor: 100000, iva: 19000, tipo: 'Emitido' },
   ],
-  alertaProximoVencimiento: { dias: 5, etiqueta: 'periodo 2026-08', limite: '10 sept 2026', estado: 'proximo' },
+  alertaProximoVencimiento: {
+    dias: 5,
+    etiqueta: 'periodo 2026-08',
+    limite: '10 sept 2026',
+    estado: 'proximo',
+    tax_type: 'IVA_BIMESTRAL',
+  },
   suscripcion: {
     estado: 'ACTIVA',
     plan: 'TRIMESTRAL',
@@ -125,10 +132,45 @@ export const INCOME_SUMMARY: IncomeSummaryResponse = {
   ],
 };
 
+export const CALENDAR: CalendarResponse = {
+  obligaciones: [
+    {
+      tax_type: 'RETEFUENTE',
+      etiqueta: 'Periodo 2026-08',
+      fecha_limite: '2026-09-08',
+      estado: 'completado',
+      dias: null,
+    },
+    {
+      tax_type: 'IVA_BIMESTRAL',
+      etiqueta: 'Jul – Ago 2026',
+      fecha_limite: '2026-09-14',
+      estado: 'proximo',
+      dias: 5,
+    },
+    {
+      tax_type: 'RENTA_PERSONAS_JURIDICAS',
+      etiqueta: 'Renta año gravable 2025 · Cuota 2',
+      fecha_limite: '2026-10-20',
+      estado: 'aldia',
+      dias: 40,
+    },
+    {
+      tax_type: 'IVA_BIMESTRAL',
+      etiqueta: 'Sep – Oct 2026',
+      fecha_limite: '2026-11-17',
+      estado: 'aldia',
+      dias: 100,
+    },
+  ],
+};
+
 /** Respuestas por defecto de las pantallas de datos, para las pruebas que solo miran el shell. */
 export const DATA_ROUTES: Record<string, MockReply> = {
   [`GET /api/dashboard/${BUSINESS_ID}`]: { body: DASHBOARD },
   [`GET /api/iva/${BUSINESS_ID}`]: { body: IVA },
+  [`GET /api/calendar/${BUSINESS_ID}`]: { body: CALENDAR },
   [`GET /api/invoices/${BUSINESS_ID}`]: { body: INVOICES },
   [`GET /api/income-summary/${BUSINESS_ID}`]: { body: INCOME_SUMMARY },
 };
+

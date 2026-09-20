@@ -4,11 +4,11 @@ import type { DashboardResponse } from '../api/types';
 import { Icon } from '../components/Icon';
 import { ResourceView } from '../components/ScreenState';
 import { StatusDot } from '../components/StatusDot';
-import { capitalize, fmtMoney, fmtNit, fmtPercent, fmtPeriod, vencePhrase } from '../format';
+import { capitalize, fmtMoney, fmtNit, fmtPercent, fmtPeriod, taxLabel, vencePhrase } from '../format';
 import { useResource } from '../hooks/useResource';
 import '../styles/screens.css';
 
-const QUIET_STATES = new Set(['aldia', 'completado']);
+const QUIET_STATES = new Set(['aldia', 'completado', 'sin_datos']);
 
 function Hero({ data }: { data: DashboardResponse }) {
   const { business, resumen, alertaProximoVencimiento: alerta } = data;
@@ -105,6 +105,20 @@ function RecentInvoices({ data }: { data: DashboardResponse }) {
 
 function DashboardContent({ data }: { data: DashboardResponse }) {
   const { resumen, alertaProximoVencimiento: alerta } = data;
+  // Una API anterior a la 4.1b no envía `tax_type`: se trata como sin tipo.
+  const taxType = alerta.tax_type ?? null;
+  const linkTo = taxType?.startsWith('IVA') ? '/iva' : '/calendario';
+  const title =
+    taxType !== null
+      ? `${taxLabel(taxType)}${alerta.dias !== null ? ` ${vencePhrase(alerta.dias)}` : ''}`
+      : alerta.etiqueta;
+  let subtitle: string | null = null;
+  if (alerta.limite !== null) {
+    subtitle = `${capitalize(alerta.etiqueta)} · límite ${alerta.limite}`;
+  } else if (taxType !== null) {
+    subtitle = capitalize(alerta.etiqueta);
+  }
+
   return (
     <>
       <Hero data={data} />
@@ -120,15 +134,11 @@ function DashboardContent({ data }: { data: DashboardResponse }) {
         </div>
       </div>
 
-      <Link className="iva-link" to="/iva">
+      <Link className="iva-link" to={linkTo}>
         <StatusDot estado={alerta.estado} />
         <div className="iva-link-text">
-          <p className="iva-link-title">
-            {alerta.dias === null ? 'Declaración de IVA' : `Declaración de IVA ${vencePhrase(alerta.dias)}`}
-          </p>
-          <p className="iva-link-sub">
-            {capitalize(alerta.etiqueta)} · límite {alerta.limite}
-          </p>
+          <p className="iva-link-title">{title}</p>
+          {subtitle !== null && <p className="iva-link-sub">{subtitle}</p>}
         </div>
         <Icon name="chevronRight" />
       </Link>

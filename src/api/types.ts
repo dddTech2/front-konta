@@ -39,8 +39,22 @@ export interface RecentInvoice {
 export interface NextTaxAlert {
   dias: number | null;
   etiqueta: string;
-  limite: string;
+  limite: string | null;
   estado: string;
+  tax_type: string | null;
+}
+
+/** Espejo de `api/schemas.py`, Story 4.1b. */
+export interface CalendarObligation {
+  tax_type: string;
+  etiqueta: string;
+  fecha_limite: string;
+  estado: string;
+  dias: number | null;
+}
+
+export interface CalendarResponse {
+  obligaciones: CalendarObligation[];
 }
 
 export interface SubscriptionInfo {
@@ -80,7 +94,7 @@ export interface IvaPeriodItem {
   pct: number;
   /** `en_curso` o `presentado`. */
   estado: string;
-  limite: string;
+  limite: string | null;
   dias: number | null;
   facturas: PeriodInvoiceItem[];
 }

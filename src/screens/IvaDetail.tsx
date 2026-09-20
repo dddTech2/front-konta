@@ -14,14 +14,18 @@ const ESTADO_LABEL: Record<string, string> = { en_curso: 'En curso', presentado:
 /** Presentado se decide por `estado`; los días solo cuentan mientras el periodo sigue en curso. */
 function DueLine({ period }: { period: IvaPeriodItem }) {
   if (period.estado === 'presentado') {
-    return <p className="ring-due ring-due-done">Presentado · límite era {period.limite}</p>;
-  }
-  if (period.dias !== null) {
     return (
-      <p className="ring-due">
-        {capitalize(vencePhrase(period.dias))} · {period.limite}
+      <p className="ring-due ring-due-done">
+        {period.limite !== null ? `Presentado · límite era ${period.limite}` : 'Presentado'}
       </p>
     );
+  }
+  if (period.dias !== null) {
+    const phrase = capitalize(vencePhrase(period.dias));
+    return <p className="ring-due">{period.limite !== null ? `${phrase} · ${period.limite}` : phrase}</p>;
+  }
+  if (period.limite === null) {
+    return <p className="ring-due">Sin fecha límite disponible</p>;
   }
   return <p className="ring-due">Límite {period.limite}</p>;
 }

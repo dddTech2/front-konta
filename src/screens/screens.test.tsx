@@ -5,6 +5,7 @@ import { getToken, setToken } from '../auth/session';
 import { recentMonths } from '../format';
 import {
   BUSINESS_ID,
+  CALENDAR,
   DASHBOARD,
   INCOME_SUMMARY,
   INVOICES,
@@ -14,10 +15,10 @@ import {
   ivaPeriod,
 } from '../test/fixtures';
 import { ME_MANUAL, ME_OK, mockApi, renderApp, resetSession, type MockReply, type Route } from '../test/utils';
-import { deriveObligations } from './Calendario';
 
 const DASHBOARD_PATH = `GET /api/dashboard/${BUSINESS_ID}`;
 const IVA_PATH = `GET /api/iva/${BUSINESS_ID}`;
+const CALENDAR_PATH = `GET /api/calendar/${BUSINESS_ID}`;
 const INVOICES_PATH = `GET /api/invoices/${BUSINESS_ID}`;
 const INCOME_SUMMARY_PATH = `GET /api/income-summary/${BUSINESS_ID}`;
 
@@ -154,7 +155,13 @@ describe('Dashboard', () => {
       [DASHBOARD_PATH]: {
         body: {
           ...DASHBOARD,
-          alertaProximoVencimiento: { dias: null, etiqueta: 'periodo 2026-08', limite: '10 sept 2026', estado: 'aldia' },
+          alertaProximoVencimiento: {
+            dias: null,
+            etiqueta: 'periodo 2026-08',
+            limite: '10 sept 2026',
+            estado: 'aldia',
+            tax_type: 'IVA_BIMESTRAL',
+          },
         },
       },
     });
@@ -163,6 +170,52 @@ describe('Dashboard', () => {
 
     expect(link).toHaveTextContent('Declaración de IVA');
     expect(link).not.toHaveTextContent(/vence/);
+    expect(document.querySelector('.hero-bell-dot')).toBeNull();
+  });
+
+  it('alerta con tax_type RETEFUENTE muestra su título y enlaza a /calendario', async () => {
+    open('/inicio', {
+      [DASHBOARD_PATH]: {
+        body: {
+          ...DASHBOARD,
+          alertaProximoVencimiento: {
+            dias: 5,
+            etiqueta: 'periodo 2026-08',
+            limite: '14 sep 2026',
+            estado: 'proximo',
+            tax_type: 'RETEFUENTE',
+          },
+        },
+      },
+    });
+
+    const link = await screen.findByRole('link', { name: /Retención en la fuente vence en 5 días/ });
+    expect(link).toHaveAttribute('href', '/calendario');
+    expect(link).toHaveTextContent('Retención en la fuente vence en 5 días');
+    expect(link).toHaveTextContent('Periodo 2026-08 · límite 14 sep 2026');
+  });
+
+  it('alerta sin calendario cargado (sin_datos): muestra la etiqueta sin subtítulo ni mención a null', async () => {
+    open('/inicio', {
+      [DASHBOARD_PATH]: {
+        body: {
+          ...DASHBOARD,
+          alertaProximoVencimiento: {
+            dias: null,
+            etiqueta: 'Calendario no disponible',
+            limite: null,
+            estado: 'sin_datos',
+            tax_type: null,
+          },
+        },
+      },
+    });
+
+    const link = await screen.findByRole('link', { name: /Calendario no disponible/ });
+    expect(link).toHaveAttribute('href', '/calendario');
+    expect(link).toHaveTextContent('Calendario no disponible');
+    expect(link).not.toHaveTextContent(/null/i);
+    expect(link.querySelector('.iva-link-sub')).toBeNull();
     expect(document.querySelector('.hero-bell-dot')).toBeNull();
   });
 
@@ -275,6 +328,35 @@ describe('IVA', () => {
   it('sin periodos: aviso en vez de una pantalla en blanco', async () => {
     open('/iva', { [IVA_PATH]: { body: { ...IVA, periodos: [] } } });
     expect(await screen.findByText('Aún no hay periodos de IVA para tu negocio.')).toBeInTheDocument();
+  });
+
+  it('periodo con limite null y dias null muestra Sin fecha límite disponible sin texto null', async () => {
+    open('/iva', {
+      [IVA_PATH]: {
+        body: {
+          ...IVA,
+          periodos: [ivaPeriod({ estado: 'en_curso', limite: null, dias: null })],
+        },
+      },
+    });
+
+    expect(await screen.findByText('Sin fecha límite disponible')).toBeInTheDocument();
+    expect(screen.queryByText(/null/i)).not.toBeInTheDocument();
+  });
+
+  it('periodo presentado con limite null muestra Presentado a secas', async () => {
+    open('/iva', {
+      [IVA_PATH]: {
+        body: {
+          ...IVA,
+          periodos: [ivaPeriod({ estado: 'presentado', limite: null, dias: null })],
+        },
+      },
+    });
+
+    expect(await screen.findByText('Presentado', { selector: '.ring-due' })).toBeInTheDocument();
+    expect(screen.queryByText(/límite era/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/null/i)).not.toBeInTheDocument();
   });
 });
 
@@ -479,60 +561,81 @@ describe('Historial', () => {
 });
 
 describe('Calendario', () => {
-  it('deriva próximas y completadas de /api/iva: presentado -> completado; en curso a 5 días -> próximo', async () => {
-    open('/calendario');
+  it('muestra grupos Próximas (3) y Completadas (1) con pills, títulos por taxLabel, fecha formateada y token Bearer', async () => {
+    const api = open('/calendario');
 
-    expect(await screen.findByRole('heading', { name: 'Próximas (1)' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Próximas (3)' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Completadas (1)' })).toBeInTheDocument();
-    expect(screen.getByText('En 5 días')).toBeInTheDocument();
-    expect(screen.getByText('Jul – Ago 2026 · 10 sept 2026')).toBeInTheDocument();
-    expect(screen.getByText('Completado')).toBeInTheDocument();
-    expect(screen.getByText('May – Jun 2026 · 10 jul 2026')).toBeInTheDocument();
+
+    // Títulos por taxLabel
     expect(screen.getAllByText('Declaración de IVA')).toHaveLength(2);
+    expect(screen.getByText('Retención en la fuente')).toBeInTheDocument();
+    expect(screen.getByText('Declaración de renta')).toBeInTheDocument();
+
+    // Fecha formateada (14 sep 2026)
+    expect(screen.getByText(/Jul – Ago 2026 · 14 sep 2026/)).toBeInTheDocument();
+
+    // Pills con los tres estados pintados
+    expect(screen.getByText('En 5 días')).toBeInTheDocument();
+    expect(screen.getByText('Completado')).toBeInTheDocument();
+    expect(screen.getByText('En 40 días')).toBeInTheDocument();
+
+    // Llamada con Bearer
+    const call = api.calls.find((c) => c.path === `/api/calendar/${BUSINESS_ID}`);
+    expect(call).toBeDefined();
+    expect(call?.headers.Authorization).toBe('Bearer jwt-1');
   });
 
-  it('etiquetas de días: hoy, venció y sin fecha', async () => {
+  it('etiquetas de pills: hoy, en 1 día y al día', async () => {
     open('/calendario', {
-      [IVA_PATH]: {
+      [CALENDAR_PATH]: {
         body: {
-          ...IVA,
-          periodos: [
-            ivaPeriod({ period_key: 'a', dias: 0 }),
-            ivaPeriod({ period_key: 'b', dias: -2 }),
-            ivaPeriod({ period_key: 'c', dias: null }),
-            ivaPeriod({ period_key: 'd', dias: 1 }),
+          obligaciones: [
+            { tax_type: 'IVA_BIMESTRAL', etiqueta: 'E1', fecha_limite: '2026-09-01', estado: 'proximo', dias: 0 },
+            { tax_type: 'RETEFUENTE', etiqueta: 'E2', fecha_limite: '2026-09-02', estado: 'proximo', dias: 1 },
+            { tax_type: 'RETEFUENTE', etiqueta: 'E3', fecha_limite: '2026-09-03', estado: 'aldia', dias: null },
           ],
         },
       },
     });
 
-    expect(await screen.findByRole('heading', { name: 'Próximas (4)' })).toBeInTheDocument();
-    expect(screen.getByText('Vence hoy')).toBeInTheDocument();
-    expect(screen.getByText('Venció')).toBeInTheDocument();
-    expect(screen.getByText('Al día')).toBeInTheDocument();
+    expect(await screen.findByText('Vence hoy')).toBeInTheDocument();
     expect(screen.getByText('En 1 día')).toBeInTheDocument();
-    // Orden de "Próximas": lo más urgente primero y lo que no tiene fecha al final.
-    const pills = [...document.querySelectorAll('.due-pill')].map((el) => el.textContent?.trim());
-    expect(pills).toEqual(['Venció', 'Vence hoy', 'En 1 día', 'Al día']);
-    expect(screen.getByRole('heading', { name: 'Completadas (0)' })).toBeInTheDocument();
-    expect(screen.getByText('Aún no hay obligaciones completadas.')).toBeInTheDocument();
+    expect(screen.getByText('Al día')).toBeInTheDocument();
   });
 
-  it('sin obligaciones próximas: mensaje vacío', async () => {
-    open('/calendario', { [IVA_PATH]: { body: { ...IVA, periodos: [IVA.periodos[1]] } } });
+  it('409: aparece Calendario no disponible y no el bloque de error con Reintentar', async () => {
+    open('/calendario', { [CALENDAR_PATH]: { status: 409, body: { detail: 'Calendario no cargado.' } } });
+
+    expect(await screen.findByText('Calendario no disponible')).toBeInTheDocument();
+    expect(
+      screen.getByText('Aún no tenemos cargado el calendario tributario de este año. Inténtalo de nuevo más tarde.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Reintentar' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('500: bloque de error y Reintentar vuelve a pedir', async () => {
+    const user = userEvent.setup();
+    const api = open('/calendario', { [CALENDAR_PATH]: { status: 500, body: { detail: 'Error interno.' } } });
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent('Error interno.');
+
+    api.set(CALENDAR_PATH, { body: CALENDAR });
+    await user.click(screen.getByRole('button', { name: 'Reintentar' }));
+
+    expect(await screen.findByRole('heading', { name: 'Próximas (3)' })).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('lista vacía: muestra mensajes vacíos para próximas y completadas', async () => {
+    open('/calendario', { [CALENDAR_PATH]: { body: { obligaciones: [] } } });
 
     expect(await screen.findByText('No tienes obligaciones próximas.')).toBeInTheDocument();
-  });
-
-  it('deriveObligations aplica el umbral de 10 días del prototipo', () => {
-    const states = deriveObligations([
-      ivaPeriod({ period_key: 'x1', dias: 10 }),
-      ivaPeriod({ period_key: 'x2', dias: 11 }),
-      ivaPeriod({ period_key: 'x3', dias: null }),
-      ivaPeriod({ period_key: 'x4', estado: 'presentado', dias: 3 }),
-    ]).map((o) => o.estado);
-
-    expect(states).toEqual(['proximo', 'aldia', 'aldia', 'completado']);
+    expect(screen.getByText('Aún no hay obligaciones completadas.')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Próximas (0)' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Completadas (0)' })).toBeInTheDocument();
   });
 });
 
@@ -556,7 +659,7 @@ describe('Estados de red y sesión en las pantallas', () => {
 
   it('red caída: error con Reintentar y banner; al reintentar carga los datos y el banner desaparece', async () => {
     const user = userEvent.setup();
-    const api = open('/calendario', { [IVA_PATH]: { networkError: true } });
+    const api = open('/calendario', { [CALENDAR_PATH]: { networkError: true } });
 
     const alert = await screen.findByRole('alert');
     expect(alert).toHaveTextContent('No pudimos conectar con el servidor');
@@ -564,23 +667,23 @@ describe('Estados de red y sesión en las pantallas', () => {
     expect(getToken()).toBe('jwt-1');
     expect(screen.queryByText('Declaración de IVA')).not.toBeInTheDocument();
 
-    api.set(IVA_PATH, { body: IVA });
+    api.set(CALENDAR_PATH, { body: CALENDAR });
     await user.click(within(alert).getByRole('button', { name: 'Reintentar' }));
 
-    expect(await screen.findByRole('heading', { name: 'Próximas (1)' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Próximas (3)' })).toBeInTheDocument();
     await waitFor(() => expect(screen.queryByText('No pudimos conectar con el servidor.')).not.toBeInTheDocument());
   });
 
   it('el "Reintentar" del banner de red también recarga la pantalla que quedó en error', async () => {
     const user = userEvent.setup();
-    const api = open('/calendario', { [IVA_PATH]: { networkError: true } });
+    const api = open('/calendario', { [CALENDAR_PATH]: { networkError: true } });
     await screen.findByRole('alert');
     const banner = screen.getByRole('status');
 
-    api.set(IVA_PATH, { body: IVA });
+    api.set(CALENDAR_PATH, { body: CALENDAR });
     await user.click(within(banner).getByRole('button', { name: 'Reintentar' }));
 
-    expect(await screen.findByRole('heading', { name: 'Próximas (1)' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Próximas (3)' })).toBeInTheDocument();
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     expect(screen.queryByText('No pudimos conectar con el servidor.')).not.toBeInTheDocument();
   });
@@ -603,6 +706,7 @@ describe('Estados de red y sesión en las pantallas', () => {
         `/api/dashboard/${BUSINESS_ID}`,
         `/api/iva/${BUSINESS_ID}`,
         `/api/invoices/${BUSINESS_ID}`,
+        `/api/calendar/${BUSINESS_ID}`,
       ]),
     );
   });

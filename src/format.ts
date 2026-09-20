@@ -41,6 +41,19 @@ export function fmtPeriod(yearMonth: string): string {
   return match && month ? `${month} ${match[1]}` : yearMonth;
 }
 
+const DEADLINE_MONTHS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+
+/** `2026-09-14` -> `14 sep 2026`. Si el texto no tiene formato YYYY-MM-DD lo devuelve tal cual. */
+export function fmtDeadline(iso: string): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+  if (!match) return iso;
+  const monthIdx = Number(match[2]) - 1;
+  const month = DEADLINE_MONTHS[monthIdx];
+  if (!month) return iso;
+  const day = Number(match[3]);
+  return `${day} ${month} ${match[1]}`;
+}
+
 /** Últimos `count` meses (el actual primero) como `YYYY-MM`. */
 export function recentMonths(count: number, now: Date = new Date()): string[] {
   const months: string[] = [];
@@ -87,4 +100,21 @@ const ESTADO_COLOR: Record<string, string> = {
 
 export function estadoColor(estado: string): string {
   return ESTADO_COLOR[estado] ?? 'var(--gris-medio)';
+}
+
+/** Nombre legible para cada tipo de impuesto. */
+export function taxLabel(taxType: string | null): string {
+  if (taxType === null) return '';
+  switch (taxType) {
+    case 'IVA_BIMESTRAL':
+    case 'IVA_CUATRIMESTRAL':
+      return 'Declaración de IVA';
+    case 'RETEFUENTE':
+      return 'Retención en la fuente';
+    case 'RENTA_PERSONAS_NATURALES':
+    case 'RENTA_PERSONAS_JURIDICAS':
+      return 'Declaración de renta';
+    default:
+      return taxType;
+  }
 }
