@@ -2,7 +2,8 @@ import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { getToken, setToken } from '../auth/session';
-import { ME_OK, mockApi, renderApp, resetSession, type MockReply } from '../test/utils';
+import { INCOME_SUMMARY } from '../test/fixtures';
+import { ME_MANUAL, ME_OK, mockApi, renderApp, resetSession, type MockReply } from '../test/utils';
 
 const SALE_CREATED = {
   id: 'sale-1',
@@ -29,16 +30,43 @@ async function openForm(user: ReturnType<typeof userEvent.setup>) {
 }
 
 describe('SalesMenuItem: visibilidad según /me', () => {
-  it('provisionada y sin bloqueo: el ítem está en el menú superior', async () => {
-    mockApi({ 'GET /api/auth/me': { body: ME_OK } });
+  it('provisionada y sin bloqueo (MANUAL_SALES): el ítem está en el menú superior', async () => {
+    mockApi({ 'GET /api/auth/me': { body: ME_MANUAL } });
 
     renderApp('/inicio');
 
     expect(await screen.findByRole('button', MENU_ITEM)).toBeInTheDocument();
   });
 
+  it('negocio DIAN (ME_OK): el ítem no existe en el DOM', async () => {
+    mockApi({ 'GET /api/auth/me': { body: ME_OK } });
+
+    renderApp('/inicio');
+
+    await screen.findByRole('navigation', { name: 'Secciones' });
+    expect(screen.queryByText('Registrar Venta')).not.toBeInTheDocument();
+  });
+
+  it('income_source ausente: el ítem no existe en el DOM', async () => {
+    mockApi({ 'GET /api/auth/me': { body: { ...ME_OK, income_source: undefined } } });
+
+    renderApp('/inicio');
+
+    await screen.findByRole('navigation', { name: 'Secciones' });
+    expect(screen.queryByText('Registrar Venta')).not.toBeInTheDocument();
+  });
+
+  it('income_source null: el ítem no existe en el DOM', async () => {
+    mockApi({ 'GET /api/auth/me': { body: { ...ME_OK, income_source: null } } });
+
+    renderApp('/inicio');
+
+    await screen.findByRole('navigation', { name: 'Secciones' });
+    expect(screen.queryByText('Registrar Venta')).not.toBeInTheDocument();
+  });
+
   it('sin negocio provisionado: el ítem no existe en el DOM', async () => {
-    mockApi({ 'GET /api/auth/me': { body: { ...ME_OK, business_id: null, is_provisioned: false } } });
+    mockApi({ 'GET /api/auth/me': { body: { ...ME_MANUAL, business_id: null, is_provisioned: false } } });
 
     renderApp('/inicio');
 
@@ -47,7 +75,7 @@ describe('SalesMenuItem: visibilidad según /me', () => {
   });
 
   it('is_provisioned=false aunque llegue un business_id: el ítem se oculta, no se deshabilita', async () => {
-    mockApi({ 'GET /api/auth/me': { body: { ...ME_OK, is_provisioned: false } } });
+    mockApi({ 'GET /api/auth/me': { body: { ...ME_MANUAL, is_provisioned: false } } });
 
     renderApp('/inicio');
 
@@ -56,7 +84,7 @@ describe('SalesMenuItem: visibilidad según /me', () => {
   });
 
   it('negocio BLOQUEADO: Servicio Suspendido y ningún ítem de ventas', async () => {
-    mockApi({ 'GET /api/auth/me': { body: { ...ME_OK, is_blocked: true, subscription_status: 'BLOQUEADO' } } });
+    mockApi({ 'GET /api/auth/me': { body: { ...ME_MANUAL, is_blocked: true, subscription_status: 'BLOQUEADO' } } });
 
     renderApp('/inicio');
 
@@ -68,8 +96,9 @@ describe('SalesMenuItem: visibilidad según /me', () => {
 describe('SalesForm', () => {
   it('201: envía el total con el business_id de /me, cierra el formulario y confirma el monto', async () => {
     const api = mockApi({
-      'GET /api/auth/me': { body: { ...ME_OK, business_id: 'biz-9' } },
+      'GET /api/auth/me': { body: { ...ME_MANUAL, business_id: 'biz-9' } },
       'POST /api/sales/biz-9': { status: 201, body: SALE_CREATED },
+      'GET /api/income-summary/biz-9': { body: INCOME_SUMMARY },
     });
     const user = userEvent.setup();
     renderApp('/inicio');
@@ -89,7 +118,7 @@ describe('SalesForm', () => {
 
   it('sin descripción: no se envía el campo (queda null en el servidor)', async () => {
     const api = mockApi({
-      'GET /api/auth/me': { body: ME_OK },
+      'GET /api/auth/me': { body: ME_MANUAL },
       'POST /api/sales/biz-1': { status: 201, body: { ...SALE_CREATED, description: null, total_amount: '100.10' } },
     });
     const user = userEvent.setup();
@@ -105,7 +134,7 @@ describe('SalesForm', () => {
 
   it('422 del servicio: error en línea, formulario abierto y datos conservados', async () => {
     mockApi({
-      'GET /api/auth/me': { body: ME_OK },
+      'GET /api/auth/me': { body: ME_MANUAL },
       'POST /api/sales/biz-1': { status: 422, body: { detail: 'El total debe ser mayor a cero.' } },
     });
     const user = userEvent.setup();
@@ -126,7 +155,7 @@ describe('SalesForm', () => {
 
   it('422 de esquema (total no numérico): aviso genérico en español, formulario abierto', async () => {
     mockApi({
-      'GET /api/auth/me': { body: ME_OK },
+      'GET /api/auth/me': { body: ME_MANUAL },
       'POST /api/sales/biz-1': {
         status: 422,
         body: { detail: [{ type: 'decimal_parsing', loc: ['body', 'total_amount'], msg: 'Input should be a valid decimal' }] },
@@ -144,7 +173,7 @@ describe('SalesForm', () => {
   });
 
   it('total vacío: error en línea y no se llama a la API', async () => {
-    const api = mockApi({ 'GET /api/auth/me': { body: ME_OK } });
+    const api = mockApi({ 'GET /api/auth/me': { body: ME_MANUAL } });
     const user = userEvent.setup();
     renderApp('/inicio');
 
@@ -158,7 +187,7 @@ describe('SalesForm', () => {
   it('doble clic: una sola solicitud y el botón queda deshabilitado mientras se envía', async () => {
     let release: (reply: MockReply) => void = () => undefined;
     const api = mockApi({
-      'GET /api/auth/me': { body: ME_OK },
+      'GET /api/auth/me': { body: ME_MANUAL },
       'POST /api/sales/biz-1': () =>
         new Promise<MockReply>((resolve) => {
           release = resolve;
@@ -184,7 +213,7 @@ describe('SalesForm', () => {
 
   it('401 al enviar: vuelve al login y no muestra error en el formulario', async () => {
     mockApi({
-      'GET /api/auth/me': { body: ME_OK },
+      'GET /api/auth/me': { body: ME_MANUAL },
       'POST /api/sales/biz-1': { status: 401, body: { detail: 'Sesión inválida o expirada.' } },
     });
     const user = userEvent.setup();
@@ -201,7 +230,7 @@ describe('SalesForm', () => {
 
   it('403 tardío (BLOQUEADO entre el menú y el envío): Servicio Suspendido, sesión intacta', async () => {
     mockApi({
-      'GET /api/auth/me': { body: ME_OK },
+      'GET /api/auth/me': { body: ME_MANUAL },
       'POST /api/sales/biz-1': {
         status: 403,
         body: { status_code: 403, error: 'SUBSCRIPTION_BLOCKED', message: 'Pago pendiente de tu plan.' },
@@ -223,7 +252,7 @@ describe('SalesForm', () => {
 
   it('404 (negocio ajeno) y red caída: mensaje en línea y se puede reintentar', async () => {
     const api = mockApi({
-      'GET /api/auth/me': { body: ME_OK },
+      'GET /api/auth/me': { body: ME_MANUAL },
       'POST /api/sales/biz-1': { status: 404, body: { detail: "No se encontró el negocio con identificador 'biz-1'." } },
     });
     const user = userEvent.setup();
@@ -244,7 +273,7 @@ describe('SalesForm', () => {
   });
 
   it('Escape cierra el formulario abierto sin llamar a la API', async () => {
-    const api = mockApi({ 'GET /api/auth/me': { body: ME_OK } });
+    const api = mockApi({ 'GET /api/auth/me': { body: ME_MANUAL } });
     const user = userEvent.setup();
     renderApp('/inicio');
 
@@ -258,7 +287,7 @@ describe('SalesForm', () => {
   it('Escape con un envío en curso no cierra el formulario', async () => {
     let release: (reply: MockReply) => void = () => undefined;
     mockApi({
-      'GET /api/auth/me': { body: ME_OK },
+      'GET /api/auth/me': { body: ME_MANUAL },
       'POST /api/sales/biz-1': () =>
         new Promise<MockReply>((resolve) => {
           release = resolve;
@@ -284,7 +313,7 @@ describe('SalesForm', () => {
 
   it('"Cerrar" quita la confirmación de la venta', async () => {
     mockApi({
-      'GET /api/auth/me': { body: ME_OK },
+      'GET /api/auth/me': { body: ME_MANUAL },
       'POST /api/sales/biz-1': { status: 201, body: SALE_CREATED },
     });
     const user = userEvent.setup();
@@ -302,7 +331,7 @@ describe('SalesForm', () => {
 
   it('tras un 422 el foco vuelve al campo del total y Escape sigue cerrando el formulario', async () => {
     mockApi({
-      'GET /api/auth/me': { body: ME_OK },
+      'GET /api/auth/me': { body: ME_MANUAL },
       'POST /api/sales/biz-1': { status: 422, body: { detail: 'El total debe ser mayor a cero.' } },
     });
     const user = userEvent.setup();
@@ -319,7 +348,7 @@ describe('SalesForm', () => {
   });
 
   it('Cancelar cierra el formulario sin llamar a la API', async () => {
-    const api = mockApi({ 'GET /api/auth/me': { body: ME_OK } });
+    const api = mockApi({ 'GET /api/auth/me': { body: ME_MANUAL } });
     const user = userEvent.setup();
     renderApp('/inicio');
 
@@ -328,5 +357,50 @@ describe('SalesForm', () => {
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(api.calls.some((c) => c.method === 'POST')).toBe(false);
+  });
+
+  it('tras registrar una venta el Resumen del mes en curso se vuelve a consultar sin recargar (AC #4)', async () => {
+    const api = mockApi({
+      'GET /api/auth/me': { body: ME_MANUAL },
+      'POST /api/sales/biz-1': { status: 201, body: SALE_CREATED },
+    });
+    const user = userEvent.setup();
+    renderApp('/inicio');
+
+    // Inicialmente carga el resumen de DATA_ROUTES (ingresos: 1.500.000, etc.)
+    await screen.findByRole('region', { name: 'Resumen' });
+    expect(await screen.findByText('$1.500.000')).toBeInTheDocument();
+
+    const initialSummaryCalls = api.calls.filter((c) => c.path.startsWith('/api/income-summary/'));
+    expect(initialSummaryCalls).toHaveLength(1);
+
+    // Simulamos que tras la venta el servidor devolverá ingresos actualizados: 1.650.000
+    api.set('GET /api/income-summary/biz-1', {
+      body: {
+        month: '2026-08',
+        ingresos: '1650000.00',
+        egresos: '400000.00',
+        utilidad: '1250000.00',
+        historial: [],
+      },
+    });
+
+    const dialog = await openForm(user);
+    await user.type(within(dialog).getByLabelText('Total de la venta'), '150000.00');
+    await user.click(within(dialog).getByRole('button', { name: 'Guardar venta' }));
+
+    // Cierra el formulario y muestra la confirmación
+    expect(await screen.findByRole('status')).toHaveTextContent('Venta registrada por $150.000.');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+
+    // Se verifica la segunda llamada a income-summary
+    await waitFor(() => {
+      const summaryCalls = api.calls.filter((c) => c.path.startsWith('/api/income-summary/'));
+      expect(summaryCalls).toHaveLength(2);
+    });
+
+    // El nuevo importe se ve en pantalla
+    expect(await screen.findByText('$1.650.000')).toBeInTheDocument();
+    expect(screen.getByText('$1.250.000')).toBeInTheDocument();
   });
 });

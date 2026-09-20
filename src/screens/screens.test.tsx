@@ -1,4 +1,4 @@
-import { act, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { getToken, setToken } from '../auth/session';
@@ -6,18 +6,20 @@ import { recentMonths } from '../format';
 import {
   BUSINESS_ID,
   DASHBOARD,
+  INCOME_SUMMARY,
   INVOICES,
   IVA,
   invoice,
   invoicesPage,
   ivaPeriod,
 } from '../test/fixtures';
-import { ME_OK, mockApi, renderApp, resetSession, type MockReply, type Route } from '../test/utils';
+import { ME_MANUAL, ME_OK, mockApi, renderApp, resetSession, type MockReply, type Route } from '../test/utils';
 import { deriveObligations } from './Calendario';
 
 const DASHBOARD_PATH = `GET /api/dashboard/${BUSINESS_ID}`;
 const IVA_PATH = `GET /api/iva/${BUSINESS_ID}`;
 const INVOICES_PATH = `GET /api/invoices/${BUSINESS_ID}`;
+const INCOME_SUMMARY_PATH = `GET /api/income-summary/${BUSINESS_ID}`;
 
 beforeEach(() => {
   resetSession();
@@ -30,6 +32,12 @@ afterEach(() => {
 
 function open(path: string, routes: Record<string, Route> = {}) {
   const api = mockApi({ 'GET /api/auth/me': { body: ME_OK }, ...routes });
+  renderApp(path);
+  return api;
+}
+
+function openManual(path: string, routes: Record<string, Route> = {}) {
+  const api = mockApi({ 'GET /api/auth/me': { body: ME_MANUAL }, ...routes });
   renderApp(path);
   return api;
 }
@@ -597,5 +605,161 @@ describe('Estados de red y sesión en las pantallas', () => {
         `/api/invoices/${BUSINESS_ID}`,
       ]),
     );
+  });
+});
+
+describe('Resumen (ventas manuales)', () => {
+  it('/inicio termina en Resumen con Utilidad estimada, cifras y navegación correspondiente', async () => {
+    openManual('/inicio');
+
+    const section = await screen.findByRole('region', { name: 'Resumen' });
+    expect(within(section).getByText(/Utilidad estimada/)).toBeInTheDocument();
+    expect(within(section).getByText('$1.100.000')).toBeInTheDocument();
+    expect(within(section).getByText('$1.500.000')).toBeInTheDocument();
+    expect(within(section).getByText('$400.000')).toBeInTheDocument();
+
+    const nav = screen.getByRole('navigation', { name: 'Secciones' });
+    expect(within(nav).getByRole('link', { name: 'Resumen' })).toBeInTheDocument();
+    expect(within(nav).getByRole('link', { name: 'Facturas' })).toBeInTheDocument();
+    expect(within(nav).queryByRole('link', { name: 'Inicio' })).not.toBeInTheDocument();
+    expect(within(nav).queryByRole('link', { name: 'IVA' })).not.toBeInTheDocument();
+    expect(within(nav).queryByRole('link', { name: 'Calendario' })).not.toBeInTheDocument();
+  });
+
+  it('/iva y /calendario redirigen a Resumen', async () => {
+    openManual('/iva');
+    expect(await screen.findByRole('region', { name: 'Resumen' })).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Periodo de IVA' })).not.toBeInTheDocument();
+
+    cleanup();
+    openManual('/calendario');
+    expect(await screen.findByRole('region', { name: 'Resumen' })).toBeInTheDocument();
+    expect(screen.queryByText('Calendario de vencimientos')).not.toBeInTheDocument();
+  });
+
+  it('la primera llamada a income-summary lleva month= con el mes actual', async () => {
+    const api = openManual('/resumen');
+    await screen.findByRole('region', { name: 'Resumen' });
+
+    const currentMonth = recentMonths(6)[0];
+    const call = api.calls.find((c) => c.path.startsWith('/api/income-summary/'));
+    expect(call).toBeDefined();
+    expect(call?.path).toBe(`/api/income-summary/${BUSINESS_ID}?month=${encodeURIComponent(currentMonth)}`);
+    expect(call?.headers.Authorization).toBe('Bearer jwt-1');
+  });
+
+  it('cambiar el selector de mes vuelve a llamar con el nuevo month=', async () => {
+    const user = userEvent.setup();
+    const api = openManual('/resumen');
+    await screen.findByRole('region', { name: 'Resumen' });
+
+    const targetMonth = recentMonths(6)[1];
+    await user.selectOptions(screen.getByLabelText('Mes'), targetMonth);
+
+    await waitFor(() => {
+      const calls = api.calls.filter((c) => c.path.startsWith('/api/income-summary/'));
+      expect(calls.length).toBeGreaterThanOrEqual(2);
+      const lastCall = calls[calls.length - 1];
+      expect(lastCall.path).toBe(`/api/income-summary/${BUSINESS_ID}?month=${encodeURIComponent(targetMonth)}`);
+    });
+  });
+
+  it('mes vacío (ingresos y egresos 0.00) muestra aviso sin datos conservando cifras', async () => {
+    openManual('/resumen', {
+      [INCOME_SUMMARY_PATH]: {
+        body: {
+          month: '2026-08',
+          ingresos: '0.00',
+          egresos: '0.00',
+          utilidad: '0.00',
+          historial: [],
+        },
+      },
+    });
+
+    const section = await screen.findByRole('region', { name: 'Resumen' });
+    expect(await within(section).findByText('Aún no hay ventas ni facturas recibidas en este mes.')).toBeInTheDocument();
+    expect(within(section).getAllByText('$0').length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('utilidad negativa se muestra con signo -$', async () => {
+    openManual('/resumen', {
+      [INCOME_SUMMARY_PATH]: {
+        body: {
+          month: '2026-08',
+          ingresos: '150000.00',
+          egresos: '400000.00',
+          utilidad: '-250000.00',
+          historial: [],
+        },
+      },
+    });
+
+    const section = await screen.findByRole('region', { name: 'Resumen' });
+    expect(await within(section).findByText('-$250.000')).toBeInTheDocument();
+  });
+
+  it('error 500 muestra el bloque de error y Reintentar vuelve a pedir y muestra los datos', async () => {
+    const user = userEvent.setup();
+    const api = openManual('/resumen', {
+      [INCOME_SUMMARY_PATH]: { status: 500, body: { detail: 'Error en servidor.' } },
+    });
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent('Error en servidor.');
+
+    api.set(INCOME_SUMMARY_PATH, { body: INCOME_SUMMARY });
+    await user.click(within(alert).getByRole('button', { name: 'Reintentar' }));
+
+    const section = await screen.findByRole('region', { name: 'Resumen' });
+    expect(within(section).getByText('$1.100.000')).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('texto de la pantalla no contiene IVA ni impuesto', async () => {
+    openManual('/resumen');
+
+    const section = await screen.findByRole('region', { name: 'Resumen' });
+    expect(section.textContent).not.toMatch(/iva|impuesto/i);
+  });
+
+  it('un negocio DIAN sigue mostrando Inicio, IVA, Facturas, Calendario y /resumen redirige a Inicio', async () => {
+    open('/resumen');
+
+    expect(await screen.findByRole('region', { name: 'Resumen del mes' })).toBeInTheDocument();
+    const nav = screen.getByRole('navigation', { name: 'Secciones' });
+    expect(within(nav).getByRole('link', { name: 'Inicio' })).toBeInTheDocument();
+    expect(within(nav).getByRole('link', { name: 'IVA' })).toBeInTheDocument();
+    expect(within(nav).getByRole('link', { name: 'Facturas' })).toBeInTheDocument();
+    expect(within(nav).getByRole('link', { name: 'Calendario' })).toBeInTheDocument();
+    expect(within(nav).queryByRole('link', { name: 'Resumen' })).not.toBeInTheDocument();
+  });
+
+  it('income_source ausente se trata como DIAN', async () => {
+    open('/resumen', {
+      'GET /api/auth/me': { body: { ...ME_OK, income_source: undefined } },
+    });
+
+    expect(await screen.findByRole('region', { name: 'Resumen del mes' })).toBeInTheDocument();
+    const nav = screen.getByRole('navigation', { name: 'Secciones' });
+    expect(within(nav).getByRole('link', { name: 'Inicio' })).toBeInTheDocument();
+    expect(within(nav).queryByRole('link', { name: 'Resumen' })).not.toBeInTheDocument();
+  });
+
+  it('importes con muchos dígitos se formatean en pesos colombianos con separadores de miles', async () => {
+    openManual('/resumen', {
+      [INCOME_SUMMARY_PATH]: {
+        body: {
+          month: '2026-08',
+          ingresos: '123456789012.00',
+          egresos: '50000.00',
+          utilidad: '123456739012.00',
+          historial: [],
+        },
+      },
+    });
+
+    const section = await screen.findByRole('region', { name: 'Resumen' });
+    expect(await within(section).findByText('$123.456.789.012')).toBeInTheDocument();
   });
 });

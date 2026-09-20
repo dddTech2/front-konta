@@ -1,5 +1,6 @@
 import type {
   DashboardResponse,
+  IncomeSummaryResponse,
   InvoiceDetailItem,
   InvoicesListResponse,
   IvaDetailResponse,
@@ -109,9 +110,25 @@ export function invoicesPage(items: InvoiceDetailItem[], total = items.length, o
 
 export const INVOICES: InvoicesListResponse = invoicesPage([invoice(1), invoice(2, { group_type: 'Recibido' })]);
 
+export const INCOME_SUMMARY: IncomeSummaryResponse = {
+  month: '2026-08',
+  ingresos: '1500000.00',
+  egresos: '400000.00',
+  utilidad: '1100000.00',
+  historial: [
+    { month: '2026-03', ingresos: '1000000.00', egresos: '300000.00', utilidad: '700000.00' },
+    { month: '2026-04', ingresos: '1100000.00', egresos: '320000.00', utilidad: '780000.00' },
+    { month: '2026-05', ingresos: '1200000.00', egresos: '350000.00', utilidad: '850000.00' },
+    { month: '2026-06', ingresos: '1300000.00', egresos: '380000.00', utilidad: '920000.00' },
+    { month: '2026-07', ingresos: '1400000.00', egresos: '390000.00', utilidad: '1010000.00' },
+    { month: '2026-08', ingresos: '1500000.00', egresos: '400000.00', utilidad: '1100000.00' },
+  ],
+};
+
 /** Respuestas por defecto de las pantallas de datos, para las pruebas que solo miran el shell. */
 export const DATA_ROUTES: Record<string, MockReply> = {
   [`GET /api/dashboard/${BUSINESS_ID}`]: { body: DASHBOARD },
   [`GET /api/iva/${BUSINESS_ID}`]: { body: IVA },
   [`GET /api/invoices/${BUSINESS_ID}`]: { body: INVOICES },
+  [`GET /api/income-summary/${BUSINESS_ID}`]: { body: INCOME_SUMMARY },
 };

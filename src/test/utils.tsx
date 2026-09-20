@@ -15,6 +15,12 @@ export const ME_OK: Me = {
   subscription_status: 'ACTIVA',
   has_warning_banner: false,
   redirect_url: null,
+  income_source: 'DIAN',
+};
+
+export const ME_MANUAL: Me = {
+  ...ME_OK,
+  income_source: 'MANUAL_SALES',
 };
 
 export interface MockReply {

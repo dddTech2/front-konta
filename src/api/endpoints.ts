@@ -2,6 +2,7 @@ import { apiFetch } from './client';
 import type {
   DashboardResponse,
   GroupType,
+  IncomeSummaryResponse,
   InvoicesListResponse,
   IvaDetailResponse,
   SaleCreatePayload,
@@ -42,3 +43,7 @@ export function getInvoices(businessId: string, query: InvoiceQuery = {}): Promi
 /** Registra una venta del negocio activo (canal WEB). La validación del total es del servidor (422). */
 export const registerSale = (businessId: string, payload: SaleCreatePayload): Promise<SaleResponse> =>
   apiFetch<SaleResponse>(businessPath('sales', businessId), { method: 'POST', body: payload });
+
+/** Ingresos, egresos y utilidad del mes `YYYY-MM` de un negocio de ventas manuales (404 para DIAN). */
+export const getIncomeSummary = (businessId: string, month: string): Promise<IncomeSummaryResponse> =>
+  apiFetch<IncomeSummaryResponse>(`${businessPath('income-summary', businessId)}?month=${encodeURIComponent(month)}`);

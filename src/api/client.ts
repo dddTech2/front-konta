@@ -24,6 +24,12 @@ export interface Me {
   subscription_status: string | null;
   has_warning_banner: boolean;
   redirect_url: string | null;
+  income_source?: 'DIAN' | 'MANUAL_SALES' | null;
+}
+
+/** Un negocio sin `income_source` (API anterior) o sin negocio se trata como DIAN. */
+export function isManualSales(me: Me | null): boolean {
+  return me?.income_source === 'MANUAL_SALES';
 }
 
 export class ApiError extends Error {

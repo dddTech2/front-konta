@@ -1,5 +1,6 @@
 import { useState, type ComponentType, type ReactNode } from 'react';
 import { Navigate, NavLink, Route, Routes } from 'react-router-dom';
+import { isManualSales } from './api/client';
 import type { SaleResponse } from './api/types';
 import { useAuth } from './auth/AuthContext';
 import SalesForm from './components/SalesForm';
@@ -10,6 +11,7 @@ import Dashboard from './screens/Dashboard';
 import Historial from './screens/Historial';
 import IvaDetail from './screens/IvaDetail';
 import Login from './screens/Login';
+import Resumen from './screens/Resumen';
 import SinNegocio from './screens/SinNegocio';
 import Suspended from './screens/Suspended';
 
@@ -59,20 +61,29 @@ function RequireSession({ children }: { children: ReactNode }) {
 interface Section {
   path: string;
   label: string;
+}
+
+interface DianSection extends Section {
   Screen: ComponentType<{ businessId: string }>;
 }
 
-const SECTIONS: Section[] = [
+const DIAN_SECTIONS: DianSection[] = [
   { path: '/inicio', label: 'Inicio', Screen: Dashboard },
   { path: '/iva', label: 'IVA', Screen: IvaDetail },
   { path: '/historial', label: 'Facturas', Screen: Historial },
   { path: '/calendario', label: 'Calendario', Screen: Calendario },
 ];
 
+const MANUAL_SECTIONS: Section[] = [
+  { path: '/resumen', label: 'Resumen' },
+  { path: '/historial', label: 'Facturas' },
+];
+
 function Shell() {
   const { logout, me } = useAuth();
   const [salesOpen, setSalesOpen] = useState(false);
   const [confirmation, setConfirmation] = useState<SaleResponse | null>(null);
+  const [salesVersion, setSalesVersion] = useState(0);
   // RequireSession ya garantiza un negocio; esto solo estrecha el tipo.
   const businessId = me?.business_id;
   if (!businessId) return null;
@@ -80,7 +91,11 @@ function Shell() {
   function onSaleRegistered(sale: SaleResponse) {
     setSalesOpen(false);
     setConfirmation(sale);
+    setSalesVersion((n) => n + 1);
   }
+
+  const manual = isManualSales(me);
+  const sections = manual ? MANUAL_SECTIONS : DIAN_SECTIONS;
 
   return (
     <div className="shell">
@@ -107,7 +122,7 @@ function Shell() {
         <SalesForm businessId={businessId} onClose={() => setSalesOpen(false)} onRegistered={onSaleRegistered} />
       )}
       <nav className="shell-nav" aria-label="Secciones">
-        {SECTIONS.map((section) => (
+        {sections.map((section) => (
           <NavLink key={section.path} to={section.path} className={({ isActive }) => (isActive ? 'active' : '')}>
             {section.label}
           </NavLink>
@@ -115,10 +130,17 @@ function Shell() {
       </nav>
       <main className="shell-main">
         <Routes>
-          {SECTIONS.map(({ path, Screen }) => (
-            <Route key={path} path={path} element={<Screen businessId={businessId} />} />
-          ))}
-          <Route path="*" element={<Navigate to="/inicio" replace />} />
+          {manual ? (
+            <>
+              <Route path="/resumen" element={<Resumen businessId={businessId} refreshKey={salesVersion} />} />
+              <Route path="/historial" element={<Historial businessId={businessId} />} />
+            </>
+          ) : (
+            DIAN_SECTIONS.map(({ path, Screen }) => (
+              <Route key={path} path={path} element={<Screen businessId={businessId} />} />
+            ))
+          )}
+          <Route path="*" element={<Navigate to={manual ? '/resumen' : '/inicio'} replace />} />
         </Routes>
       </main>
     </div>

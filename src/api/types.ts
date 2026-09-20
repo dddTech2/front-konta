@@ -129,3 +129,19 @@ export interface InvoicesListResponse {
   limit: number;
   offset: number;
 }
+
+/** Espejo de `IncomeSummaryResponse` de `api/schemas.py` (Story 6.3). */
+export interface IncomeSummaryItem {
+  month: string;
+  ingresos: string;
+  egresos: string;
+  utilidad: string;
+}
+
+export interface IncomeSummaryResponse {
+  month: string;
+  ingresos: string;
+  egresos: string;
+  utilidad: string;
+  historial: IncomeSummaryItem[];
+}
