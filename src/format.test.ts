@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { estadoColor, fmtMoney, fmtNit, fmtPercent, fmtPeriod, recentMonths, vencePhrase } from './format';
+import { estadoColor, fmtMoney, fmtMoneyExact, fmtNit, fmtPercent, fmtPeriod, recentMonths, vencePhrase } from './format';
 
 describe('format', () => {
   it('fmtMoney usa es-CO como el prototipo: $12.450.000', () => {
@@ -8,6 +8,13 @@ describe('format', () => {
     expect(fmtMoney(0)).toBe('$0');
     expect(fmtMoney(-50000)).toBe('-$50.000');
     expect(fmtMoney(Number.NaN)).toBe('$0');
+  });
+
+  it('fmtMoneyExact muestra decimales solo si la venta los tiene', () => {
+    expect(fmtMoneyExact('150000.00')).toBe('$150.000');
+    expect(fmtMoneyExact('100.10')).toBe('$100,10');
+    expect(fmtMoneyExact(2500.5)).toBe('$2.500,50');
+    expect(fmtMoneyExact('abc')).toBe('$0');
   });
 
   it('fmtPeriod convierte YYYY-MM y deja intacto lo demás', () => {

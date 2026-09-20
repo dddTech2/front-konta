@@ -67,6 +67,8 @@ export function resetApi(): void {
 export const NETWORK_ERROR_MESSAGE =
   'No pudimos conectar con el servidor. Revisa tu conexión e inténtalo de nuevo.';
 
+export const VALIDATION_ERROR_MESSAGE = 'Los datos enviados no son válidos. Revisa los campos e inténtalo de nuevo.';
+
 function asRecord(value: unknown): Record<string, unknown> | null {
   return typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : null;
 }
@@ -76,6 +78,8 @@ function extractMessage(body: unknown): string | undefined {
   const record = asRecord(body);
   if (!record) return undefined;
   if (typeof record.detail === 'string') return record.detail;
+  // 422 de FastAPI por esquema: `detail` es una lista en inglés; se muestra un aviso genérico en español.
+  if (Array.isArray(record.detail)) return VALIDATION_ERROR_MESSAGE;
   const nested = asRecord(record.detail);
   if (nested && typeof nested.message === 'string') return nested.message;
   if (typeof record.message === 'string') return record.message;

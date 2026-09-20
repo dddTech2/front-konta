@@ -148,6 +148,39 @@ body {
   margin: 0 0 16px;
 }
 
+.field-hint {
+  display: block;
+  margin-top: 6px;
+  color: var(--gris-medio);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+/* ---------- Diálogo (formulario de venta) ---------- */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(30, 52, 49, 0.55);
+}
+
+.modal {
+  width: 100%;
+  max-width: 480px;
+  max-height: 100vh;
+  overflow-y: auto;
+  padding: 24px 24px 28px;
+  border-radius: 24px 24px 0 0;
+}
+
+.modal-title {
+  font-size: 22px;
+  margin-bottom: 16px;
+}
+
 /* ---------- Botones ---------- */
 .btn-primary,
 .btn-outline,
@@ -298,6 +331,42 @@ body {
 
 .shell-header .btn-link {
   color: var(--beige);
+}
+
+.shell-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.menu-sales {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1.5px solid var(--beige);
+  background: transparent;
+  color: var(--beige);
+  padding: 7px 14px;
+  border-radius: 999px;
+}
+
+.menu-sales:active {
+  transform: scale(0.98);
+}
+
+.sale-confirmation {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 12px 12px 0;
+  background: var(--beige);
+  color: var(--verde);
+  border-radius: 12px;
+  padding: 8px 14px;
+  font-size: 13.5px;
+  font-weight: 600;
 }
 
 .shell-nav {

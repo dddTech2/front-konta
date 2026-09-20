@@ -1,5 +1,12 @@
 import { apiFetch } from './client';
-import type { DashboardResponse, GroupType, InvoicesListResponse, IvaDetailResponse } from './types';
+import type {
+  DashboardResponse,
+  GroupType,
+  InvoicesListResponse,
+  IvaDetailResponse,
+  SaleCreatePayload,
+  SaleResponse,
+} from './types';
 
 /** Endpoints de datos del negocio activo. El manejo de 401/403/red vive solo en `apiFetch` (ADR-005). */
 const businessPath = (resource: string, businessId: string) => `/api/${resource}/${encodeURIComponent(businessId)}`;
@@ -31,3 +38,7 @@ export function getInvoices(businessId: string, query: InvoiceQuery = {}): Promi
   params.set('offset', String(query.offset ?? 0));
   return apiFetch<InvoicesListResponse>(`${businessPath('invoices', businessId)}?${params.toString()}`);
 }
+
+/** Registra una venta del negocio activo (canal WEB). La validación del total es del servidor (422). */
+export const registerSale = (businessId: string, payload: SaleCreatePayload): Promise<SaleResponse> =>
+  apiFetch<SaleResponse>(businessPath('sales', businessId), { method: 'POST', body: payload });

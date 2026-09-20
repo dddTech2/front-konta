@@ -7,6 +7,18 @@ export function fmtMoney(value: number): string {
   return `${rounded < 0 ? '-' : ''}$${body}`;
 }
 
+/** Importe exacto de una venta: `$150.000`, `$100,10` (solo muestra decimales si los tiene). Acepta la cadena Decimal de la API. */
+export function fmtMoneyExact(value: string | number): string {
+  const amount = Number(value);
+  const safe = Number.isFinite(amount) ? amount : 0;
+  const hasCents = Math.abs(Math.round(safe * 100) % 100) !== 0;
+  const body = Math.abs(safe).toLocaleString('es-CO', {
+    minimumFractionDigits: hasCents ? 2 : 0,
+    maximumFractionDigits: hasCents ? 2 : 0,
+  });
+  return `${safe < 0 ? '-' : ''}$${body}`;
+}
+
 const MONTHS = [
   'Enero',
   'Febrero',

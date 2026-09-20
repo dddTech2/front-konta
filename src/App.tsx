@@ -1,6 +1,10 @@
-import type { ComponentType, ReactNode } from 'react';
+import { useState, type ComponentType, type ReactNode } from 'react';
 import { Navigate, NavLink, Route, Routes } from 'react-router-dom';
+import type { SaleResponse } from './api/types';
 import { useAuth } from './auth/AuthContext';
+import SalesForm from './components/SalesForm';
+import SalesMenuItem from './components/SalesMenuItem';
+import { fmtMoneyExact } from './format';
 import Calendario from './screens/Calendario';
 import Dashboard from './screens/Dashboard';
 import Historial from './screens/Historial';
@@ -67,19 +71,41 @@ const SECTIONS: Section[] = [
 
 function Shell() {
   const { logout, me } = useAuth();
+  const [salesOpen, setSalesOpen] = useState(false);
+  const [confirmation, setConfirmation] = useState<SaleResponse | null>(null);
   // RequireSession ya garantiza un negocio; esto solo estrecha el tipo.
   const businessId = me?.business_id;
   if (!businessId) return null;
+
+  function onSaleRegistered(sale: SaleResponse) {
+    setSalesOpen(false);
+    setConfirmation(sale);
+  }
+
   return (
     <div className="shell">
       <header className="shell-header">
         <div className="row-between">
           <span className="shell-brand">Kontable</span>
-          <button className="btn-link" type="button" onClick={logout}>
-            Salir
-          </button>
+          <div className="shell-actions">
+            <SalesMenuItem onOpen={() => setSalesOpen(true)} />
+            <button className="btn-link" type="button" onClick={logout}>
+              Salir
+            </button>
+          </div>
         </div>
       </header>
+      {confirmation && (
+        <div className="sale-confirmation" role="status">
+          <span>Venta registrada por {fmtMoneyExact(confirmation.total_amount)}.</span>
+          <button className="btn-link" type="button" onClick={() => setConfirmation(null)}>
+            Cerrar
+          </button>
+        </div>
+      )}
+      {salesOpen && (
+        <SalesForm businessId={businessId} onClose={() => setSalesOpen(false)} onRegistered={onSaleRegistered} />
+      )}
       <nav className="shell-nav" aria-label="Secciones">
         {SECTIONS.map((section) => (
           <NavLink key={section.path} to={section.path} className={({ isActive }) => (isActive ? 'active' : '')}>

@@ -1,5 +1,13 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { ApiError, apiFetch, configureApi, requestOtp, verifyOtp, type ApiHandlers } from './client';
+import {
+  ApiError,
+  apiFetch,
+  configureApi,
+  requestOtp,
+  VALIDATION_ERROR_MESSAGE,
+  verifyOtp,
+  type ApiHandlers,
+} from './client';
 import { mockApi } from '../test/utils';
 
 function handlers(overrides: Partial<ApiHandlers> = {}): ApiHandlers {
@@ -87,6 +95,21 @@ describe('apiFetch', () => {
     await apiFetch('/api/x');
 
     expect(h.onNetworkRecovered).toHaveBeenCalledTimes(1);
+  });
+
+  it('422 con detail en lista (validación de FastAPI): mensaje genérico en español, sin logout ni suspensión', async () => {
+    const h = handlers();
+    configureApi(h);
+    mockApi({ 'POST /api/x': { status: 422, body: { detail: [{ type: 'decimal_parsing', msg: 'Input should be a valid decimal' }] } } });
+
+    await expect(apiFetch('/api/x', { method: 'POST', body: {} })).rejects.toMatchObject({
+      kind: 'http',
+      status: 422,
+      message: VALIDATION_ERROR_MESSAGE,
+    });
+
+    expect(h.onUnauthorized).not.toHaveBeenCalled();
+    expect(h.onForbidden).not.toHaveBeenCalled();
   });
 
   it('5xx sin cuerpo JSON: error http con mensaje genérico', async () => {

@@ -92,6 +92,21 @@ export interface IvaDetailResponse {
   periodos: IvaPeriodItem[];
 }
 
+/** Cuerpo de `POST /api/sales/{business_id}`. El total viaja como texto para no perder decimales. */
+export interface SaleCreatePayload {
+  total_amount: string;
+  description?: string;
+}
+
+/** Venta registrada (Story 5.3). `total_amount` llega como cadena Decimal ("150000.00"); solo se convierte a número para mostrarlo. */
+export interface SaleResponse {
+  id: string;
+  total_amount: string;
+  description: string | null;
+  recorded_via: string;
+  created_at: string;
+}
+
 export type GroupType = 'Emitido' | 'Recibido';
 
 export interface InvoiceDetailItem {
