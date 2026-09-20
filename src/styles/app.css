@@ -329,13 +329,6 @@ body {
   padding: 20px;
 }
 
-.slot-empty {
-  text-align: center;
-  color: var(--gris-medio);
-  font-size: 13.5px;
-  line-height: 1.5;
-}
-
 /* ---------- Banner de red ---------- */
 .network-banner {
   position: sticky;

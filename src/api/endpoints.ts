@@ -1,0 +1,33 @@
+import { apiFetch } from './client';
+import type { DashboardResponse, GroupType, InvoicesListResponse, IvaDetailResponse } from './types';
+
+/** Endpoints de datos del negocio activo. El manejo de 401/403/red vive solo en `apiFetch` (ADR-005). */
+const businessPath = (resource: string, businessId: string) => `/api/${resource}/${encodeURIComponent(businessId)}`;
+
+export const getDashboard = (businessId: string): Promise<DashboardResponse> =>
+  apiFetch<DashboardResponse>(businessPath('dashboard', businessId));
+
+export const getIva = (businessId: string): Promise<IvaDetailResponse> =>
+  apiFetch<IvaDetailResponse>(businessPath('iva', businessId));
+
+export const INVOICES_PAGE_SIZE = 50;
+
+export interface InvoiceQuery {
+  group?: GroupType;
+  /** Mes `YYYY-MM`. */
+  period?: string;
+  search?: string;
+  offset?: number;
+}
+
+/** Filtros y búsqueda se resuelven en el servidor: el cliente solo arma los parámetros. */
+export function getInvoices(businessId: string, query: InvoiceQuery = {}): Promise<InvoicesListResponse> {
+  const params = new URLSearchParams();
+  if (query.group) params.set('group_type', query.group);
+  if (query.period) params.set('period', query.period);
+  const search = query.search?.trim();
+  if (search) params.set('search', search);
+  params.set('limit', String(INVOICES_PAGE_SIZE));
+  params.set('offset', String(query.offset ?? 0));
+  return apiFetch<InvoicesListResponse>(`${businessPath('invoices', businessId)}?${params.toString()}`);
+}

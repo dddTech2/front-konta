@@ -1,6 +1,10 @@
-import type { ReactNode } from 'react';
+import type { ComponentType, ReactNode } from 'react';
 import { Navigate, NavLink, Route, Routes } from 'react-router-dom';
 import { useAuth } from './auth/AuthContext';
+import Calendario from './screens/Calendario';
+import Dashboard from './screens/Dashboard';
+import Historial from './screens/Historial';
+import IvaDetail from './screens/IvaDetail';
 import Login from './screens/Login';
 import SinNegocio from './screens/SinNegocio';
 import Suspended from './screens/Suspended';
@@ -48,27 +52,24 @@ function RequireSession({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
-/** Espacio reservado para las pantallas de la Story 5.2b. */
-function Slot({ name }: { name: string }) {
-  return (
-    <section aria-label={name} className="slot-empty">
-      <h2 className="h-title" style={{ fontSize: 20 }}>
-        {name}
-      </h2>
-      <p>Esta sección estará disponible próximamente.</p>
-    </section>
-  );
+interface Section {
+  path: string;
+  label: string;
+  Screen: ComponentType<{ businessId: string }>;
 }
 
-const SECTIONS = [
-  { path: '/inicio', label: 'Inicio' },
-  { path: '/iva', label: 'IVA' },
-  { path: '/historial', label: 'Facturas' },
-  { path: '/calendario', label: 'Calendario' },
+const SECTIONS: Section[] = [
+  { path: '/inicio', label: 'Inicio', Screen: Dashboard },
+  { path: '/iva', label: 'IVA', Screen: IvaDetail },
+  { path: '/historial', label: 'Facturas', Screen: Historial },
+  { path: '/calendario', label: 'Calendario', Screen: Calendario },
 ];
 
 function Shell() {
-  const { logout } = useAuth();
+  const { logout, me } = useAuth();
+  // RequireSession ya garantiza un negocio; esto solo estrecha el tipo.
+  const businessId = me?.business_id;
+  if (!businessId) return null;
   return (
     <div className="shell">
       <header className="shell-header">
@@ -88,8 +89,8 @@ function Shell() {
       </nav>
       <main className="shell-main">
         <Routes>
-          {SECTIONS.map((section) => (
-            <Route key={section.path} path={section.path} element={<Slot name={section.label} />} />
+          {SECTIONS.map(({ path, Screen }) => (
+            <Route key={path} path={path} element={<Screen businessId={businessId} />} />
           ))}
           <Route path="*" element={<Navigate to="/inicio" replace />} />
         </Routes>

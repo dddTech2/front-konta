@@ -136,7 +136,8 @@ describe('Sesión y rutas protegidas', () => {
 
     expect(await screen.findByRole('navigation', { name: 'Secciones' })).toBeInTheDocument();
     expect(screen.queryByLabelText('Celular o NIT')).not.toBeInTheDocument();
-    expect(api.calls).toHaveLength(1);
+    // Restaurar la sesión: /me una sola vez y luego solo la carga de la pantalla de inicio.
+    expect(api.calls.map((c) => c.path)).toEqual(['/api/auth/me', '/api/dashboard/biz-1']);
     expect(api.calls[0].headers.Authorization).toBe('Bearer jwt-guardado');
   });
 
