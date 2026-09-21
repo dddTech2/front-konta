@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '../auth/AuthContext';
+import { BRAND_NAME } from '../brand';
 import { whatsappUrl } from '../config';
 
 const DEFAULT_MESSAGE =
@@ -70,7 +71,7 @@ export default function Suspended() {
       <div className="stack">
         <a
           className="btn-primary"
-          href={whatsappUrl('Hola Katerinn, deseo confirmar el pago de mi suscripción Kontable')}
+          href={whatsappUrl(`Hola Katerinn, deseo confirmar el pago de mi suscripción ${BRAND_NAME}`)}
           target="_blank"
           rel="noopener noreferrer"
         >

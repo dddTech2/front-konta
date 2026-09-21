@@ -1,4 +1,5 @@
 import { useAuth } from '../auth/AuthContext';
+import { BRAND_NAME } from '../brand';
 import { whatsappUrl } from '../config';
 
 /** Sesión válida pero sin negocio aprovisionado (`/me` con `business_id` null). No hay llamadas a dashboard. */
@@ -18,7 +19,7 @@ export default function SinNegocio() {
       <div className="stack">
         <a
           className="btn-primary"
-          href={whatsappUrl('Hola Katerinn, ya inicié sesión en Kontable pero no veo mi negocio')}
+          href={whatsappUrl(`Hola Katerinn, ya inicié sesión en ${BRAND_NAME} pero no veo mi negocio`)}
           target="_blank"
           rel="noopener noreferrer"
         >

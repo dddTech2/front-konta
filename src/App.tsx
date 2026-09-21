@@ -3,6 +3,7 @@ import { Navigate, NavLink, Route, Routes } from 'react-router-dom';
 import { isManualSales } from './api/client';
 import type { SaleResponse } from './api/types';
 import { useAuth } from './auth/AuthContext';
+import { BRAND_NAME } from './brand';
 import SalesForm from './components/SalesForm';
 import SalesMenuItem from './components/SalesMenuItem';
 import { fmtMoneyExact } from './format';
@@ -101,7 +102,7 @@ function Shell() {
     <div className="shell">
       <header className="shell-header">
         <div className="row-between">
-          <span className="shell-brand">Kontable</span>
+          <span className="shell-brand">{BRAND_NAME}</span>
           <div className="shell-actions">
             <SalesMenuItem onOpen={() => setSalesOpen(true)} />
             <button className="btn-link" type="button" onClick={logout}>

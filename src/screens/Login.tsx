@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { ApiError, NETWORK_ERROR_MESSAGE, requestOtp, verifyOtp } from '../api/client';
 import { useAuth } from '../auth/AuthContext';
+import { BRAND_NAME, BRAND_TAGLINE } from '../brand';
 import { whatsappUrl } from '../config';
 
 type Step = 'identifier' | 'code';
@@ -76,7 +77,8 @@ export default function Login() {
       <div className="brand-mark" aria-hidden="true">
         K.
       </div>
-      <h1 className="h-title">Ingresa a Kontable</h1>
+      <h1 className="h-title">Ingresa a {BRAND_NAME}</h1>
+      <p className="brand-tagline">{BRAND_TAGLINE}</p>
 
       {step === 'identifier' ? (
         <form onSubmit={onRequest} noValidate>
@@ -107,7 +109,7 @@ export default function Login() {
         </form>
       ) : (
         <form onSubmit={onVerify} noValidate>
-          <p className="lead">Escribe el código que te llegó al chat de Telegram de Kontable.</p>
+          <p className="lead">Escribe el código que te llegó al chat de Telegram de {BRAND_NAME}.</p>
           {info && (
             <p className="form-info" role="status">
               {info}
@@ -156,7 +158,7 @@ export default function Login() {
       <p className="fine-print">
         ¿No tienes Telegram vinculado?{' '}
         <a
-          href={whatsappUrl('Hola Katerinn, necesito vincular mi Telegram para entrar a Kontable')}
+          href={whatsappUrl(`Hola Katerinn, necesito vincular mi Telegram para entrar a ${BRAND_NAME}`)}
           target="_blank"
           rel="noopener noreferrer"
         >

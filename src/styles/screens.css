@@ -1,5 +1,12 @@
 /* Pantallas de datos (Story 5.2b). Medidas y colores portados de kontable-prototipo_1.html. */
 
+.brand-tagline {
+  color: var(--gris-medio);
+  font-size: 13px;
+  line-height: 1.4;
+  margin: 0 0 24px;
+}
+
 .screen {
   padding-bottom: 32px;
 }

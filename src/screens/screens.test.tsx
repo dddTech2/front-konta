@@ -867,3 +867,14 @@ describe('Resumen (ventas manuales)', () => {
     expect(await within(section).findByText('$123.456.789.012')).toBeInTheDocument();
   });
 });
+
+describe('Login', () => {
+  it('la pantalla de Login muestra el slogan «Con K, contabilidad para emprendedores» y el título «Ingresa a Konta»', async () => {
+    resetSession();
+    mockApi({});
+    renderApp('/login');
+
+    expect(await screen.findByRole('heading', { name: 'Ingresa a Konta' })).toBeInTheDocument();
+    expect(screen.getByText('Con K, contabilidad para emprendedores')).toBeInTheDocument();
+  });
+});

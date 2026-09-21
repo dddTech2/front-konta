@@ -1,12 +1,12 @@
 {
-  "name": "kontable-web",
+  "name": "konta-web",
   "private": true,
   "version": "0.1.0",
   "type": "module",
   "engines": {
     "node": ">=18"
   },
-  "description": "SPA de Kontable (React + Vite): login por OTP de Telegram y pantallas del contribuyente.",
+  "description": "SPA de Konta (React + Vite): login por OTP de Telegram y pantallas del contribuyente.",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
