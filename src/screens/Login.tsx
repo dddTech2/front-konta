@@ -1,4 +1,5 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
+import { useLocation } from 'react-router-dom';
 import { ApiError, NETWORK_ERROR_MESSAGE, requestOtp, verifyOtp } from '../api/client';
 import { useAuth } from '../auth/AuthContext';
 import { BRAND_NAME, BRAND_TAGLINE } from '../brand';
@@ -8,6 +9,13 @@ type Step = 'identifier' | 'code';
 
 const CODE_LENGTH = 6;
 
+const LINK_EXPIRED_MESSAGE =
+  'El enlace venció o no es válido. Escribe /dashboard en Telegram para recibir uno nuevo, o entra con tu código.';
+
+interface LocationState {
+  linkExpired?: boolean;
+}
+
 function messageOf(error: unknown): string {
   if (error instanceof ApiError) return error.message;
   return NETWORK_ERROR_MESSAGE;
@@ -15,12 +23,22 @@ function messageOf(error: unknown): string {
 
 export default function Login() {
   const { login } = useAuth();
+  const location = useLocation();
+  const state = location.state as LocationState | null;
   const [step, setStep] = useState<Step>('identifier');
   const [identifier, setIdentifier] = useState('');
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(() =>
+    state?.linkExpired ? LINK_EXPIRED_MESSAGE : null,
+  );
   const [info, setInfo] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (state?.linkExpired) {
+      setError(LINK_EXPIRED_MESSAGE);
+    }
+  }, [state?.linkExpired]);
 
   const trimmed = identifier.trim();
 

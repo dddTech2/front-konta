@@ -9,6 +9,7 @@ import SalesMenuItem from './components/SalesMenuItem';
 import { fmtMoneyExact } from './format';
 import Calendario from './screens/Calendario';
 import Dashboard from './screens/Dashboard';
+import Entrar from './screens/Entrar';
 import Historial from './screens/Historial';
 import IvaDetail from './screens/IvaDetail';
 import Login from './screens/Login';
@@ -154,6 +155,7 @@ export default function App() {
     <>
       {status === 'ready' && <NetworkBanner />}
       <Routes>
+        <Route path="/entrar/:token" element={<Entrar />} />
         <Route path="/login" element={<LoginRoute />} />
         <Route
           path="/*"

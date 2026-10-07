@@ -176,3 +176,6 @@ export const requestOtp = (identifier: string): Promise<{ detail: string }> =>
 
 export const verifyOtp = (identifier: string, code: string): Promise<{ access_token: string }> =>
   apiFetch('/api/auth/verify-otp', { method: 'POST', body: { identifier, code }, auth: false });
+
+export const linkLogin = (token: string): Promise<{ access_token: string; token_type?: string }> =>
+  apiFetch('/api/auth/link-login', { method: 'POST', body: { token }, auth: false });

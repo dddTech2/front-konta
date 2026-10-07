@@ -916,3 +916,125 @@ describe('Login', () => {
     expect(screen.getByText('Con K, contabilidad para emprendedores')).toBeInTheDocument();
   });
 });
+
+describe('/entrar/:token (Story 7.2)', () => {
+  it('canje válido: muestra "Entrando…", envía POST /api/auth/link-login sin Bearer, guarda sesión y termina en /inicio', async () => {
+    resetSession();
+    const api = mockApi({
+      'POST /api/auth/link-login': { body: { access_token: 'jwt-link-ok', token_type: 'bearer' } },
+      'GET /api/auth/me': { body: ME_OK },
+    });
+
+    renderApp('/entrar/token-valido-123');
+
+    expect(screen.getByText('Entrando…')).toBeInTheDocument();
+
+    const hero = await screen.findByRole('region', { name: 'Resumen del mes' });
+    expect(hero).toBeInTheDocument();
+    expect(screen.queryByText('Entrando…')).not.toBeInTheDocument();
+
+    const linkCall = api.calls.find((c) => c.path === '/api/auth/link-login');
+    expect(linkCall).toBeDefined();
+    expect(linkCall?.body).toEqual({ token: 'token-valido-123' });
+    expect(linkCall?.headers.Authorization).toBeUndefined();
+
+    expect(getToken()).toBe('jwt-link-ok');
+    const meCall = api.calls.find((c) => c.path === '/api/auth/me');
+    expect(meCall?.headers.Authorization).toBe('Bearer jwt-link-ok');
+  });
+
+  it('canje válido para negocio con ventas manuales termina en /resumen', async () => {
+    resetSession();
+    mockApi({
+      'POST /api/auth/link-login': { body: { access_token: 'jwt-manual-ok', token_type: 'bearer' } },
+      'GET /api/auth/me': { body: ME_MANUAL },
+    });
+
+    renderApp('/entrar/token-manual-123');
+
+    const section = await screen.findByRole('region', { name: 'Resumen' });
+    expect(section).toBeInTheDocument();
+    expect(getToken()).toBe('jwt-manual-ok');
+  });
+
+  it('canje válido con sesión previa: reemplaza la sesión anterior', async () => {
+    resetSession();
+    setToken('jwt-sesion-vieja');
+    const api = mockApi({
+      'POST /api/auth/link-login': { body: { access_token: 'jwt-sesion-nueva', token_type: 'bearer' } },
+      'GET /api/auth/me': { body: ME_OK },
+    });
+
+    renderApp('/entrar/token-reemplazo');
+
+    await screen.findByRole('region', { name: 'Resumen del mes' });
+    expect(getToken()).toBe('jwt-sesion-nueva');
+    // La primera /me sale con la sesión vieja al montar (y se descarta); la última es la de la sesión nueva.
+    const meCalls = api.calls.filter((c) => c.path === '/api/auth/me');
+    expect(meCalls[meCalls.length - 1]?.headers.Authorization).toBe('Bearer jwt-sesion-nueva');
+  });
+
+  it('enlace inválido o expirado (401): redirige a /login y muestra aviso de vencimiento', async () => {
+    resetSession();
+    mockApi({
+      'POST /api/auth/link-login': { status: 401, body: { detail: 'El enlace venció o no es válido.' } },
+    });
+
+    renderApp('/entrar/token-vencido');
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(
+      'El enlace venció o no es válido. Escribe /dashboard en Telegram para recibir uno nuevo, o entra con tu código.',
+    );
+    expect(await screen.findByRole('heading', { name: 'Ingresa a Konta' })).toBeInTheDocument();
+    expect(getToken()).toBeNull();
+  });
+
+  it('error de red en link-login: redirige a /login con el mismo aviso', async () => {
+    resetSession();
+    mockApi({
+      'POST /api/auth/link-login': { networkError: true },
+    });
+
+    renderApp('/entrar/token-red-caida');
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(
+      'El enlace venció o no es válido. Escribe /dashboard en Telegram para recibir uno nuevo, o entra con tu código.',
+    );
+    expect(await screen.findByRole('heading', { name: 'Ingresa a Konta' })).toBeInTheDocument();
+    expect(getToken()).toBeNull();
+  });
+
+  it('tras ver el aviso de enlace vencido, el flujo OTP sigue funcionando normalmente', async () => {
+    const user = userEvent.setup();
+    resetSession();
+    mockApi({
+      'POST /api/auth/link-login': { status: 401 },
+      'POST /api/auth/request-otp': { body: { detail: 'ok' } },
+      'POST /api/auth/verify-otp': { body: { access_token: 'jwt-otp-flujo' } },
+      'GET /api/auth/me': { body: ME_OK },
+    });
+
+    renderApp('/entrar/token-vencido');
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(
+      'El enlace venció o no es válido. Escribe /dashboard en Telegram para recibir uno nuevo, o entra con tu código.',
+    );
+
+    await user.type(screen.getByLabelText('Celular o NIT'), '3001234567');
+    await user.click(screen.getByRole('button', { name: 'Enviarme el código' }));
+
+    expect(
+      await screen.findByText('Te enviamos un código de 6 dígitos a tu Telegram. Vence en 5 minutos.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/El enlace venció o no es válido/)).not.toBeInTheDocument();
+
+    await user.type(screen.getByLabelText('Código de 6 dígitos'), '123456');
+    await user.click(screen.getByRole('button', { name: 'Entrar' }));
+
+    await screen.findByRole('region', { name: 'Resumen del mes' });
+    expect(getToken()).toBe('jwt-otp-flujo');
+  });
+});

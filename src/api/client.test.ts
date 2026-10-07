@@ -3,6 +3,7 @@ import {
   ApiError,
   apiFetch,
   configureApi,
+  linkLogin,
   requestOtp,
   VALIDATION_ERROR_MESSAGE,
   verifyOtp,
@@ -157,5 +158,44 @@ describe('llamadas públicas de login', () => {
 
     await expect(requestOtp('3001234567')).rejects.toMatchObject({ kind: 'network' });
     expect(h.onNetworkError).not.toHaveBeenCalled();
+  });
+
+  it('link-login: 200 entrega el access_token sin enviar Bearer', async () => {
+    const h = handlers();
+    configureApi(h);
+    const api = mockApi({
+      'POST /api/auth/link-login': {
+        status: 200,
+        body: { access_token: 'jwt-link', token_type: 'bearer' },
+      },
+    });
+
+    await expect(linkLogin('token-123')).resolves.toEqual({
+      access_token: 'jwt-link',
+      token_type: 'bearer',
+    });
+
+    expect(h.onUnauthorized).not.toHaveBeenCalled();
+    expect(api.calls[0].headers.Authorization).toBeUndefined();
+    expect(api.calls[0].body).toEqual({ token: 'token-123' });
+  });
+
+  it('link-login: 401 rechaza con error http sin disparar onUnauthorized', async () => {
+    const h = handlers();
+    configureApi(h);
+    mockApi({
+      'POST /api/auth/link-login': {
+        status: 401,
+        body: { detail: 'El enlace venció o no es válido.' },
+      },
+    });
+
+    await expect(linkLogin('token-bad')).rejects.toMatchObject({
+      kind: 'http',
+      status: 401,
+      message: 'El enlace venció o no es válido.',
+    });
+
+    expect(h.onUnauthorized).not.toHaveBeenCalled();
   });
 });
