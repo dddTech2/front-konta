@@ -31,11 +31,17 @@ export interface Me {
   has_warning_banner: boolean;
   redirect_url: string | null;
   income_source?: 'DIAN' | 'MANUAL_SALES' | null;
+  role?: 'CLIENT' | 'ADMIN';
 }
 
 /** Un negocio sin `income_source` (API anterior) o sin negocio se trata como DIAN. */
 export function isManualSales(me: Me | null): boolean {
   return me?.income_source === 'MANUAL_SALES';
+}
+
+/** Un usuario sin `role` (API anterior) se trata como CLIENT. */
+export function isAdmin(me: Me | null): boolean {
+  return me?.role === 'ADMIN';
 }
 
 export class ApiError extends Error {
@@ -185,3 +191,5 @@ export const verifyOtp = (identifier: string, code: string): Promise<{ access_to
 
 export const linkLogin = (token: string): Promise<{ access_token: string; token_type?: string }> =>
   apiFetch('/api/auth/link-login', { method: 'POST', body: { token }, auth: false });
+
+export const adminPing = (): Promise<{ ok: boolean }> => apiFetch<{ ok: boolean }>('/api/admin/ping');

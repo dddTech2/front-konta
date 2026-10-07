@@ -23,6 +23,22 @@ export const ME_MANUAL: Me = {
   income_source: 'MANUAL_SALES',
 };
 
+export const ME_ADMIN: Me = {
+  business_id: null,
+  is_provisioned: false,
+  is_blocked: false,
+  subscription_status: null,
+  has_warning_banner: false,
+  redirect_url: null,
+  income_source: null,
+  role: 'ADMIN',
+};
+
+export const ME_CLIENT: Me = {
+  ...ME_OK,
+  role: 'CLIENT',
+};
+
 export interface MockReply {
   status?: number;
   body?: unknown;

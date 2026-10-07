@@ -1,0 +1,180 @@
+@import './tokens.css';
+
+/* ---------- Layout de administración ---------- */
+.admin-shell {
+  min-height: 100vh;
+  background: var(--gris-claro);
+  display: flex;
+  flex-direction: column;
+}
+
+.admin-header {
+  background: var(--verde);
+  color: var(--beige);
+  padding: 16px 20px;
+  border-radius: 0 0 24px 24px;
+}
+
+.admin-header-inner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.admin-brand-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.admin-brand {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--beige);
+}
+
+.admin-badge {
+  font-family: var(--font-body);
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--verde-suave);
+  color: var(--beige);
+  border: 1px solid var(--verde-tint);
+  letter-spacing: 0.02em;
+}
+
+.admin-actions {
+  display: flex;
+  align-items: center;
+}
+
+.admin-logout {
+  color: var(--beige);
+  border: none;
+  background: none;
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 13.5px;
+  padding: 8px 4px;
+  cursor: pointer;
+}
+
+.admin-logout:hover {
+  opacity: 0.85;
+}
+
+.admin-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+  padding: 0 16px 24px;
+}
+
+/* ---------- Navegación ---------- */
+.admin-nav {
+  display: flex;
+  gap: 4px;
+  padding: 12px 0 0;
+  overflow-x: auto;
+}
+
+.admin-nav a {
+  flex: 1;
+  text-align: center;
+  white-space: nowrap;
+  text-decoration: none;
+  color: var(--gris-medio);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 12px;
+  border-radius: 999px;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.admin-nav a.active {
+  background: var(--beige);
+  color: var(--verde);
+  font-weight: 700;
+}
+
+/* A 360 px no debe desbordar (mismo enfoque que .shell-nav con @media max-width 400px en src/styles/app.css) */
+@media (max-width: 400px) {
+  .admin-nav {
+    gap: 2px;
+    padding: 12px 0 0;
+  }
+
+  .admin-nav a {
+    padding: 8px 6px;
+    font-size: 12px;
+  }
+}
+
+.admin-main {
+  flex: 1;
+  padding-top: 16px;
+}
+
+/* ---------- Marcador Próximamente ---------- */
+.admin-placeholder {
+  background: var(--blanco);
+  border-radius: 18px;
+  padding: 24px 20px;
+}
+
+.admin-placeholder .h-title {
+  margin-bottom: 6px;
+}
+
+.admin-placeholder .lead {
+  margin-bottom: 0;
+}
+
+/* ---------- Vista escritorio (>= 1024 px): navegación lateral ---------- */
+@media (min-width: 1024px) {
+  .admin-body {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 32px;
+    padding: 24px 20px;
+  }
+
+  .admin-nav {
+    flex-direction: column;
+    width: 220px;
+    flex-shrink: 0;
+    padding: 0;
+    gap: 8px;
+  }
+
+  .admin-nav a {
+    flex: none;
+    text-align: left;
+    padding: 12px 18px;
+    border-radius: 12px;
+    font-size: 14px;
+  }
+
+  .admin-nav a:hover:not(.active) {
+    background: rgba(30, 52, 49, 0.05);
+    color: var(--verde);
+  }
+
+  .admin-main {
+    flex: 1;
+    padding-top: 0;
+  }
+
+  .admin-placeholder {
+    padding: 36px 32px;
+  }
+}

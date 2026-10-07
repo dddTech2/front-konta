@@ -1,12 +1,13 @@
 import { useState, type ComponentType, type ReactNode } from 'react';
-import { Navigate, NavLink, Route, Routes } from 'react-router-dom';
-import { isManualSales } from './api/client';
+import { Navigate, NavLink, Route, Routes, useLocation } from 'react-router-dom';
+import { isAdmin, isManualSales } from './api/client';
 import type { SaleResponse } from './api/types';
 import { useAuth } from './auth/AuthContext';
 import { BRAND_NAME } from './brand';
 import SalesForm from './components/SalesForm';
 import SalesMenuItem from './components/SalesMenuItem';
 import { fmtMoneyExact } from './format';
+import AdminShell from './screens/admin/AdminShell';
 import Calendario from './screens/Calendario';
 import Dashboard from './screens/Dashboard';
 import Documentos from './screens/Documentos';
@@ -32,14 +33,18 @@ function NetworkBanner() {
 }
 
 function LoginRoute() {
-  const { status } = useAuth();
-  if (status !== 'anonymous') return <Navigate to="/inicio" replace />;
+  const { status, me } = useAuth();
+  if (status !== 'anonymous') {
+    if (isAdmin(me)) return <Navigate to="/admin" replace />;
+    return <Navigate to={isManualSales(me) ? '/resumen' : '/inicio'} replace />;
+  }
   return <Login />;
 }
 
 /** Guarda de rutas: decide qué pantalla corresponde a la sesión antes de mostrar el shell. */
 function RequireSession({ children }: { children: ReactNode }) {
   const { status, me, isSuspended, refreshMe } = useAuth();
+  const location = useLocation();
 
   if (status === 'anonymous') return <Navigate to="/login" replace />;
   // Un 403 de cualquier llamada (incluida `/me`) es Servicio Suspendido, aunque `/me` no haya cargado.
@@ -57,6 +62,22 @@ function RequireSession({ children }: { children: ReactNode }) {
       </main>
     );
   }
+
+  const admin = isAdmin(me);
+  const isAdminPath = location.pathname === '/admin' || location.pathname.startsWith('/admin/');
+
+  if (admin) {
+    if (!isAdminPath) {
+      return <Navigate to="/admin" replace />;
+    }
+    return <>{children}</>;
+  }
+
+  // Cliente (o sin rol explícito: por defecto CLIENT)
+  if (isAdminPath) {
+    return <Navigate to={isManualSales(me) ? '/resumen' : '/inicio'} replace />;
+  }
+
   if (me.business_id === null) return <SinNegocio />;
   return <>{children}</>;
 }
@@ -161,6 +182,14 @@ export default function App() {
       <Routes>
         <Route path="/entrar/:token" element={<Entrar />} />
         <Route path="/login" element={<LoginRoute />} />
+        <Route
+          path="/admin/*"
+          element={
+            <RequireSession>
+              <AdminShell />
+            </RequireSession>
+          }
+        />
         <Route
           path="/*"
           element={
