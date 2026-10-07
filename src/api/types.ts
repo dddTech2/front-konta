@@ -179,3 +179,30 @@ export interface IncomeSummaryResponse {
   utilidad: string;
   historial: IncomeSummaryItem[];
 }
+
+export type DocumentType =
+  | 'RUT'
+  | 'CAMARA_COMERCIO'
+  | 'CEDULA_REPRESENTANTE'
+  | 'CERTIFICACION_BANCARIA'
+  | 'OTRO';
+
+export interface BusinessDocument {
+  id: string;
+  doc_type: DocumentType;
+  description: string | null;
+  original_filename: string;
+  content_type: string;
+  size_bytes: number;
+  created_at: string;
+}
+
+export interface DocumentsResponse {
+  documents: BusinessDocument[];
+}
+
+export interface DocumentLinkResponse {
+  url: string;
+  expires_in: number;
+}
+

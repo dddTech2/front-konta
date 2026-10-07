@@ -393,6 +393,18 @@ body {
   color: var(--verde);
 }
 
+/* Con 5 secciones (DIAN + Documentos) el menú no cabe a 360 px con el relleno normal. */
+@media (max-width: 400px) {
+  .shell-nav {
+    gap: 2px;
+    padding: 12px 8px 0;
+  }
+
+  .shell-nav a {
+    padding: 8px 7px;
+  }
+}
+
 .shell-main {
   flex: 1;
   padding: 20px;

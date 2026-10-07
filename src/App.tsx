@@ -9,6 +9,7 @@ import SalesMenuItem from './components/SalesMenuItem';
 import { fmtMoneyExact } from './format';
 import Calendario from './screens/Calendario';
 import Dashboard from './screens/Dashboard';
+import Documentos from './screens/Documentos';
 import Entrar from './screens/Entrar';
 import Historial from './screens/Historial';
 import IvaDetail from './screens/IvaDetail';
@@ -74,11 +75,13 @@ const DIAN_SECTIONS: DianSection[] = [
   { path: '/iva', label: 'IVA', Screen: IvaDetail },
   { path: '/historial', label: 'Facturas', Screen: Historial },
   { path: '/calendario', label: 'Calendario', Screen: Calendario },
+  { path: '/documentos', label: 'Documentos', Screen: Documentos },
 ];
 
 const MANUAL_SECTIONS: Section[] = [
   { path: '/resumen', label: 'Resumen' },
   { path: '/historial', label: 'Facturas' },
+  { path: '/documentos', label: 'Documentos' },
 ];
 
 function Shell() {
@@ -136,6 +139,7 @@ function Shell() {
             <>
               <Route path="/resumen" element={<Resumen businessId={businessId} refreshKey={salesVersion} />} />
               <Route path="/historial" element={<Historial businessId={businessId} />} />
+              <Route path="/documentos" element={<Documentos businessId={businessId} />} />
             </>
           ) : (
             DIAN_SECTIONS.map(({ path, Screen }) => (

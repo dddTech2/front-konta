@@ -3,10 +3,12 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { getToken, setToken } from '../auth/session';
 import { recentMonths } from '../format';
+import { navigateTo } from '../navigation';
 import {
   BUSINESS_ID,
   CALENDAR,
   DASHBOARD,
+  DOCUMENTS,
   INCOME_SUMMARY,
   INVOICES,
   IVA,
@@ -15,6 +17,8 @@ import {
   ivaPeriod,
 } from '../test/fixtures';
 import { ME_MANUAL, ME_OK, mockApi, renderApp, resetSession, type MockReply, type Route } from '../test/utils';
+
+vi.mock('../navigation', () => ({ navigateTo: vi.fn() }));
 
 const DASHBOARD_PATH = `GET /api/dashboard/${BUSINESS_ID}`;
 const IVA_PATH = `GET /api/iva/${BUSINESS_ID}`;
@@ -1038,3 +1042,230 @@ describe('/entrar/:token (Story 7.2)', () => {
     expect(getToken()).toBe('jwt-otp-flujo');
   });
 });
+
+describe('Documentos (Story 7.4b)', () => {
+  const DOCUMENTS_PATH = `GET /api/documents/${BUSINESS_ID}`;
+  const DOC_LINK_PATH = `POST /api/documents/${BUSINESS_ID}/doc-1/link`;
+
+  it('lista con 3 documentos (incluido OTRO con descripción) muestra etiquetas, fechas, descripción y tamaños', async () => {
+    const api = open('/documentos');
+
+    expect(await screen.findByRole('heading', { name: 'Documentos' })).toBeInTheDocument();
+
+    // Etiquetas por tipo
+    expect(screen.getByText('RUT')).toBeInTheDocument();
+    expect(screen.getByText('Cámara de comercio')).toBeInTheDocument();
+    // OTRO usa la descripción como título
+    expect(screen.getByText('Contrato de arrendamiento')).toBeInTheDocument();
+
+    // Tamaños formateados
+    expect(screen.getByText(/230 KB/)).toBeInTheDocument();
+    expect(screen.getByText(/1,2 MB/)).toBeInTheDocument();
+    expect(screen.getByText(/999 B/)).toBeInTheDocument();
+
+    // Fechas en hora Bogotá
+    expect(screen.getByText(/6 oct 2026/)).toBeInTheDocument();
+    expect(screen.getByText(/5 oct 2026/)).toBeInTheDocument();
+    expect(screen.getByText(/1 oct 2026/)).toBeInTheDocument();
+
+    // Botones de Abrir
+    const openButtons = screen.getAllByRole('button', { name: /^Abrir / });
+    expect(openButtons).toHaveLength(3);
+
+    // Llamada con Bearer
+    const call = api.calls.find((c) => c.path === `/api/documents/${BUSINESS_ID}`);
+    expect(call).toBeDefined();
+    expect(call?.headers.Authorization).toBe('Bearer jwt-1');
+  });
+
+  it('documento con tipo específico y descripción muestra la descripción además del tipo', async () => {
+    open('/documentos', {
+      [DOCUMENTS_PATH]: {
+        body: {
+          documents: [
+            {
+              id: 'doc-cedula',
+              doc_type: 'CEDULA_REPRESENTANTE',
+              description: 'Cédula de Juan Pérez',
+              original_filename: 'cedula.pdf',
+              content_type: 'application/pdf',
+              size_bytes: 500000,
+              created_at: '2026-10-06T12:00:00',
+            },
+          ],
+        },
+      },
+    });
+
+    expect(await screen.findByText('Cédula del representante')).toBeInTheDocument();
+    expect(screen.getByText('Cédula de Juan Pérez')).toBeInTheDocument();
+  });
+
+  it('fecha UTC de madrugada se muestra en Bogotá como el día anterior', async () => {
+    open('/documentos', {
+      [DOCUMENTS_PATH]: {
+        body: {
+          documents: [
+            {
+              id: 'doc-madrugada',
+              doc_type: 'CERTIFICACION_BANCARIA',
+              description: null,
+              original_filename: 'cert_bancaria.pdf',
+              content_type: 'application/pdf',
+              size_bytes: 102400,
+              created_at: '2026-10-07T02:30:00', // 2:30 AM UTC del día 7 es 9:30 PM del día 6 en Bogotá
+            },
+          ],
+        },
+      },
+    });
+
+    expect(await screen.findByText('Certificación bancaria')).toBeInTheDocument();
+    expect(screen.getByText(/6 oct 2026/)).toBeInTheDocument();
+  });
+
+  it('lista vacía: muestra mensaje "Aún no tienes documentos cargados. Katerinn los subirá aquí."', async () => {
+    open('/documentos', {
+      [DOCUMENTS_PATH]: { body: { documents: [] } },
+    });
+
+    expect(
+      await screen.findByText('Aún no tienes documentos cargados. Katerinn los subirá aquí.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Abrir / })).not.toBeInTheDocument();
+  });
+
+  it('error 500 al cargar: muestra bloque de error y Reintentar vuelve a pedir', async () => {
+    const user = userEvent.setup();
+    const api = open('/documentos', {
+      [DOCUMENTS_PATH]: { status: 500, body: { detail: 'Error en base de datos.' } },
+    });
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent('Error en base de datos.');
+
+    api.set(DOCUMENTS_PATH, { body: DOCUMENTS });
+    await user.click(screen.getByRole('button', { name: 'Reintentar' }));
+
+    expect(await screen.findByText('RUT')).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('Abrir abre pestaña síncrona, llama al endpoint de enlace una vez ante doble clic y navega a la URL', async () => {
+    const popupMock = { location: { href: '' }, close: vi.fn(), closed: false } as unknown as Window;
+    const openSpy = vi.spyOn(window, 'open').mockReturnValue(popupMock);
+
+    const api = open('/documentos', {
+      [DOC_LINK_PATH]: { body: { url: '/api/documents/file/tok-1', expires_in: 300 } },
+    });
+
+    const btn = await screen.findByRole('button', { name: 'Abrir RUT' });
+
+    // Doble clic rápido: los dos clics llegan antes de que responda el primer pedido de enlace.
+    act(() => {
+      btn.click();
+      btn.click();
+    });
+
+    await waitFor(() => {
+      expect(popupMock.location.href).toBe('/api/documents/file/tok-1');
+    });
+
+    expect(openSpy).toHaveBeenCalledWith('', '_blank');
+    const linkCalls = api.calls.filter((c) => c.path === `/api/documents/${BUSINESS_ID}/doc-1/link`);
+    expect(linkCalls).toHaveLength(1);
+    expect(linkCalls[0].method).toBe('POST');
+    expect(linkCalls[0].headers.Authorization).toBe('Bearer jwt-1');
+  });
+
+  it('window.open devuelve null (navegador interno Telegram): usa window.location.assign', async () => {
+    const user = userEvent.setup();
+    vi.spyOn(window, 'open').mockReturnValue(null);
+    const assignMock = vi.mocked(navigateTo);
+    assignMock.mockClear();
+
+    open('/documentos', {
+      [DOC_LINK_PATH]: { body: { url: '/api/documents/file/tok-telegram', expires_in: 300 } },
+    });
+
+    const btn = await screen.findByRole('button', { name: 'Abrir RUT' });
+    await user.click(btn);
+
+    await waitFor(() => {
+      expect(assignMock).toHaveBeenCalledWith('/api/documents/file/tok-telegram');
+    });
+  });
+
+  it('404 al pedir enlace: muestra "Este documento ya no está disponible." y recarga la lista', async () => {
+    const user = userEvent.setup();
+    const popupMock = { location: { href: '' }, close: vi.fn(), closed: false } as unknown as Window;
+    vi.spyOn(window, 'open').mockReturnValue(popupMock);
+
+    const api = open('/documentos', {
+      [DOC_LINK_PATH]: { status: 404, body: { detail: 'Documento no encontrado.' } },
+    });
+
+    const btn = await screen.findByRole('button', { name: 'Abrir RUT' });
+
+    // Cuando se recargue, doc-1 ya no estará en la lista
+    api.set(DOCUMENTS_PATH, {
+      body: {
+        documents: DOCUMENTS.documents.filter((d) => d.id !== 'doc-1'),
+      },
+    });
+
+    await user.click(btn);
+
+    expect(await screen.findByText('Este documento ya no está disponible.')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.queryByText('RUT')).not.toBeInTheDocument();
+    });
+    expect(popupMock.close).toHaveBeenCalled();
+  });
+
+  it('error de red al pedir enlace: muestra mensaje en la fila con opción de reintentar', async () => {
+    const user = userEvent.setup();
+    const popupMock = { location: { href: '' }, close: vi.fn(), closed: false } as unknown as Window;
+    vi.spyOn(window, 'open').mockReturnValue(popupMock);
+
+    const api = open('/documentos', {
+      [DOC_LINK_PATH]: { networkError: true },
+    });
+
+    const btn = await screen.findByRole('button', { name: 'Abrir RUT' });
+    await user.click(btn);
+
+    // El banner global de red también dice "No pudimos conectar…": se busca dentro del error de la fila.
+    const rowAlert = await screen.findByRole('alert');
+    expect(rowAlert).toHaveTextContent(/No pudimos conectar con el servidor/);
+    expect(within(rowAlert).getByRole('button', { name: 'Reintentar' })).toBeInTheDocument();
+    expect(popupMock.close).toHaveBeenCalled();
+
+    // Al reintentar con éxito
+    api.set(DOC_LINK_PATH, { body: { url: '/api/documents/file/tok-retry', expires_in: 300 } });
+    await user.click(within(rowAlert).getByRole('button', { name: 'Reintentar' }));
+
+    await waitFor(() => {
+      expect(popupMock.location.href).toBe('/api/documents/file/tok-retry');
+    });
+  });
+
+  it('la sección Documentos aparece en el menú shell-nav para DIAN', async () => {
+    open('/inicio');
+
+    const nav = await screen.findByRole('navigation', { name: 'Secciones' });
+    const docLink = within(nav).getByRole('link', { name: 'Documentos' });
+    expect(docLink).toBeInTheDocument();
+    expect(docLink).toHaveAttribute('href', '/documentos');
+  });
+
+  it('la sección Documentos aparece en el menú shell-nav para MANUAL_SALES', async () => {
+    openManual('/resumen');
+
+    const nav = await screen.findByRole('navigation', { name: 'Secciones' });
+    const docLink = within(nav).getByRole('link', { name: 'Documentos' });
+    expect(docLink).toBeInTheDocument();
+    expect(docLink).toHaveAttribute('href', '/documentos');
+  });
+});
+

@@ -8,6 +8,12 @@
 
 const API_BASE: string = (import.meta.env.VITE_API_BASE ?? '').replace(/\/+$/, '');
 
+/** Devuelve la URL anteponiendo API_BASE si está configurado. */
+export function apiUrl(path: string): string {
+  const cleanPath = path.startsWith('/') ? path : `/${path}`;
+  return `${API_BASE}${cleanPath}`;
+}
+
 export type ApiErrorKind = 'unauthorized' | 'forbidden' | 'network' | 'http';
 
 export interface SuspensionDetail {

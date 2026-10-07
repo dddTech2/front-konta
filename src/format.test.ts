@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   estadoColor,
+  fmtBogotaDate,
   fmtDeadline,
+  fmtFileSize,
   fmtMoney,
   fmtMoneyCompact,
   fmtMoneyExact,
@@ -10,6 +12,7 @@ import {
   fmtPeriod,
   recentMonths,
   taxLabel,
+  toBogotaIsoDate,
   vencePhrase,
 } from './format';
 
@@ -109,4 +112,37 @@ describe('format', () => {
     expect(estadoColor('vencido')).toBe('var(--terracota-dark)');
     expect(estadoColor('otro')).toBe('var(--gris-medio)');
   });
+
+  it('fmtFileSize formatea tamaños legibles según AC #3 (0 B, 999 B, 230 KB, 1,2 MB)', () => {
+    expect(fmtFileSize(0)).toBe('0 B');
+    expect(fmtFileSize(999)).toBe('999 B');
+    expect(fmtFileSize(230 * 1024)).toBe('230 KB');
+    expect(fmtFileSize(235520)).toBe('230 KB');
+    expect(fmtFileSize(1.2 * 1024 * 1024)).toBe('1,2 MB');
+    expect(fmtFileSize(1258291)).toBe('1,2 MB');
+    expect(fmtFileSize(-500)).toBe('0 B');
+    expect(fmtFileSize(Number.NaN)).toBe('0 B');
+  });
+
+  it('toBogotaIsoDate y fmtBogotaDate interpretan UTC sin zona y convierten a hora Bogotá', () => {
+    // 2026-10-06T21:57:00 UTC -> 16:57 Bogotá (mismo día 6 oct)
+    expect(toBogotaIsoDate('2026-10-06T21:57:00')).toBe('2026-10-06');
+    expect(fmtBogotaDate('2026-10-06T21:57:00')).toBe('6 oct 2026');
+
+    // Madrugada UTC: 2026-10-07T02:30:00 UTC -> 21:30 Bogotá del día anterior (6 oct)
+    expect(toBogotaIsoDate('2026-10-07T02:30:00')).toBe('2026-10-06');
+    expect(fmtBogotaDate('2026-10-07T02:30:00')).toBe('6 oct 2026');
+
+    // Mañana UTC: 2026-10-07T06:00:00 UTC -> 01:00 Bogotá del día 7
+    expect(toBogotaIsoDate('2026-10-07T06:00:00')).toBe('2026-10-07');
+    expect(fmtBogotaDate('2026-10-07T06:00:00')).toBe('7 oct 2026');
+
+    // Fechas que ya incluyen 'Z'
+    expect(toBogotaIsoDate('2026-10-07T02:30:00Z')).toBe('2026-10-06');
+    expect(fmtBogotaDate('2026-10-07T02:30:00Z')).toBe('6 oct 2026');
+
+    // Texto no ISO o inválido no rompe
+    expect(fmtBogotaDate('invalido')).toBe('invalido');
+  });
 });
+

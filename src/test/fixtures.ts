@@ -1,6 +1,7 @@
 import type {
   CalendarResponse,
   DashboardResponse,
+  DocumentsResponse,
   IncomeSummaryResponse,
   InvoiceDetailItem,
   InvoicesListResponse,
@@ -188,6 +189,38 @@ export const SALES_LIST: SaleListResponse = {
   ],
 };
 
+export const DOCUMENTS: DocumentsResponse = {
+  documents: [
+    {
+      id: 'doc-1',
+      doc_type: 'RUT',
+      description: null,
+      original_filename: 'RUT_2026.pdf',
+      content_type: 'application/pdf',
+      size_bytes: 235520, // 230 KB
+      created_at: '2026-10-06T21:57:00',
+    },
+    {
+      id: 'doc-2',
+      doc_type: 'CAMARA_COMERCIO',
+      description: null,
+      original_filename: 'camara_comercio.pdf',
+      content_type: 'application/pdf',
+      size_bytes: 1258291, // 1,2 MB
+      created_at: '2026-10-05T14:30:00',
+    },
+    {
+      id: 'doc-3',
+      doc_type: 'OTRO',
+      description: 'Contrato de arrendamiento',
+      original_filename: 'contrato.pdf',
+      content_type: 'application/pdf',
+      size_bytes: 999, // 999 B
+      created_at: '2026-10-01T10:00:00',
+    },
+  ],
+};
+
 /** Respuestas por defecto de las pantallas de datos, para las pruebas que solo miran el shell. */
 export const DATA_ROUTES: Record<string, MockReply> = {
   [`GET /api/dashboard/${BUSINESS_ID}`]: { body: DASHBOARD },
@@ -196,6 +229,8 @@ export const DATA_ROUTES: Record<string, MockReply> = {
   [`GET /api/invoices/${BUSINESS_ID}`]: { body: INVOICES },
   [`GET /api/income-summary/${BUSINESS_ID}`]: { body: INCOME_SUMMARY },
   [`GET /api/sales/${BUSINESS_ID}`]: { body: SALES_LIST },
+  [`GET /api/documents/${BUSINESS_ID}`]: { body: DOCUMENTS },
 };
+
 
 

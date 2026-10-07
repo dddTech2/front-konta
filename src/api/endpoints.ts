@@ -2,6 +2,8 @@ import { apiFetch } from './client';
 import type {
   CalendarResponse,
   DashboardResponse,
+  DocumentLinkResponse,
+  DocumentsResponse,
   GroupType,
   IncomeSummaryResponse,
   InvoicesListResponse,
@@ -63,3 +65,14 @@ export const voidSale = (businessId: string, saleId: string): Promise<SaleVoidRe
   apiFetch<SaleVoidResponse>(`${businessPath('sales', businessId)}/${encodeURIComponent(saleId)}/void`, {
     method: 'POST',
   });
+
+/** Documentos del negocio activo (Story 7.4b). */
+export const getDocuments = (businessId: string): Promise<DocumentsResponse> =>
+  apiFetch<DocumentsResponse>(businessPath('documents', businessId));
+
+/** Enlace temporal firmado para visualizar o descargar un documento (Story 7.4b). */
+export const getDocumentLink = (businessId: string, documentId: string): Promise<DocumentLinkResponse> =>
+  apiFetch<DocumentLinkResponse>(`${businessPath('documents', businessId)}/${encodeURIComponent(documentId)}/link`, {
+    method: 'POST',
+  });
+

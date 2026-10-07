@@ -609,3 +609,51 @@ svg.icon {
   gap: 5px;
   white-space: nowrap;
 }
+
+/* ---------- Documentos (Story 7.4b) ---------- */
+.doc-row {
+  align-items: center;
+  gap: 12px;
+}
+
+.doc-info {
+  min-width: 0;
+  flex: 1;
+}
+
+.doc-desc {
+  color: var(--gris-oscuro);
+  font-size: 12px;
+}
+
+.doc-actions {
+  flex-shrink: 0;
+}
+
+.doc-btn {
+  width: auto;
+  min-width: 80px;
+  min-height: 40px;
+  padding: 8px 16px;
+  font-size: 13.5px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.doc-row-error {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--terracota-dark);
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.doc-retry-btn {
+  padding: 0;
+  font-size: 12px;
+  text-decoration: underline;
+}
+

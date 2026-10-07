@@ -148,3 +148,59 @@ export function taxLabel(taxType: string | null): string {
       return taxType;
   }
 }
+
+/**
+ * Tamaño legible de archivo: `0 B`, `999 B`, `230 KB`, `1,2 MB`.
+ * Usa es-CO (coma decimal) y máximo una decimal en MB/GB si la tiene.
+ */
+export function fmtFileSize(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes <= 0) return '0 B';
+  const rounded = Math.round(bytes);
+  if (rounded < 1024) return `${rounded} B`;
+
+  const kb = bytes / 1024;
+  if (Math.round(kb) < 1024) {
+    return `${Math.round(kb).toLocaleString('es-CO')} KB`;
+  }
+
+  const mb = bytes / (1024 * 1024);
+  const roundedMb = Math.round(mb * 10) / 10;
+  if (roundedMb < 1024) {
+    return `${roundedMb.toLocaleString('es-CO', { maximumFractionDigits: 1 })} MB`;
+  }
+
+  const gb = bytes / (1024 * 1024 * 1024);
+  const roundedGb = Math.round(gb * 10) / 10;
+  return `${roundedGb.toLocaleString('es-CO', { maximumFractionDigits: 1 })} GB`;
+}
+
+/**
+ * Convierte una fecha ISO (asumiendo UTC si no trae zona horaria) a fecha AAAA-MM-DD en America/Bogota.
+ */
+export function toBogotaIsoDate(utcIso: string): string {
+  if (!utcIso) return '';
+  const normalized = /Z$|[+-]\d{2}(?::?\d{2})?$/.test(utcIso) ? utcIso : `${utcIso}Z`;
+  const date = new Date(normalized);
+  if (Number.isNaN(date.getTime())) return utcIso;
+
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Bogota',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date);
+
+  const y = parts.find((p) => p.type === 'year')?.value;
+  const m = parts.find((p) => p.type === 'month')?.value;
+  const d = parts.find((p) => p.type === 'day')?.value;
+  if (!y || !m || !d) return utcIso;
+  return `${y}-${m}-${d}`;
+}
+
+/**
+ * Fecha corta en hora de Bogotá (America/Bogota) a partir de una fecha UTC (ej. '2026-10-06T21:57:00' -> '6 oct 2026').
+ */
+export function fmtBogotaDate(utcIso: string): string {
+  return fmtDeadline(toBogotaIsoDate(utcIso));
+}
+
