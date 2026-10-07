@@ -3,6 +3,7 @@ import {
   estadoColor,
   fmtDeadline,
   fmtMoney,
+  fmtMoneyCompact,
   fmtMoneyExact,
   fmtNit,
   fmtPercent,
@@ -26,6 +27,34 @@ describe('format', () => {
     expect(fmtMoneyExact('100.10')).toBe('$100,10');
     expect(fmtMoneyExact(2500.5)).toBe('$2.500,50');
     expect(fmtMoneyExact('abc')).toBe('$0');
+  });
+
+  it('fmtMoneyCompact formatea importes compactos según AC #2 (millones, miles, redondeo de borde y no finitos)', () => {
+    // Casos base especificados en el AC
+    expect(fmtMoneyCompact(0)).toBe('$0');
+    expect(fmtMoneyCompact(850)).toBe('$850');
+    expect(fmtMoneyCompact(85000)).toBe('$85 mil');
+    expect(fmtMoneyCompact(850000)).toBe('$850 mil');
+    expect(fmtMoneyCompact(1250000)).toBe('$1,3 M');
+    expect(fmtMoneyCompact(12500000)).toBe('$12,5 M');
+    expect(fmtMoneyCompact(10000000)).toBe('$10 M');
+    expect(fmtMoneyCompact(1500000000)).toBe('$1.500 M');
+
+    // Negativos con signo antes del $
+    expect(fmtMoneyCompact(-850)).toBe('-$850');
+    expect(fmtMoneyCompact(-85000)).toBe('-$85 mil');
+    expect(fmtMoneyCompact(-1250000)).toBe('-$1,3 M');
+    expect(fmtMoneyCompact(-10000000)).toBe('-$10 M');
+    expect(fmtMoneyCompact(-1500000000)).toBe('-$1.500 M');
+
+    // Redondeo de borde: 999600 -> $1 M (nunca $1.000 mil)
+    expect(fmtMoneyCompact(999600)).toBe('$1 M');
+    expect(fmtMoneyCompact(-999600)).toBe('-$1 M');
+
+    // Valores no finitos -> $0
+    expect(fmtMoneyCompact(Number.NaN)).toBe('$0');
+    expect(fmtMoneyCompact(Number.POSITIVE_INFINITY)).toBe('$0');
+    expect(fmtMoneyCompact(Number.NEGATIVE_INFINITY)).toBe('$0');
   });
 
   it('fmtPeriod convierte YYYY-MM y deja intacto lo demás', () => {

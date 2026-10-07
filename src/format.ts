@@ -19,6 +19,36 @@ export function fmtMoneyExact(value: string | number): string {
   return `${safe < 0 ? '-' : ''}$${body}`;
 }
 
+/**
+ * Formato compacto para barras y gráficas: `$0`, `$850`, `$85 mil`, `$850 mil`, `$1,3 M`, `$12,5 M`, `$10 M`, `$1.500 M`.
+ * Negativos con signo antes del `$`, separadores es-CO, máximo una decimal en millones, ninguna en miles.
+ * Redondeo de borde: `999600` -> `$1 M` (nunca `$1.000 mil`), no finitos -> `$0`.
+ */
+export function fmtMoneyCompact(value: number): string {
+  if (!Number.isFinite(value)) return '$0';
+  const abs = Math.abs(value);
+
+  const thousands = Math.round(abs / 1_000);
+  if (thousands >= 1_000) {
+    const millions = Math.round(abs / 100_000) / 10;
+    const body = millions.toLocaleString('es-CO', { maximumFractionDigits: 1 });
+    const sign = value < 0 ? '-' : '';
+    return `${sign}$${body} M`;
+  }
+
+  if (Math.round(abs) >= 1_000) {
+    const body = thousands.toLocaleString('es-CO');
+    const sign = value < 0 ? '-' : '';
+    return `${sign}$${body} mil`;
+  }
+
+  const units = Math.round(abs);
+  if (units === 0) return '$0';
+  const body = units.toLocaleString('es-CO');
+  const sign = value < 0 ? '-' : '';
+  return `${sign}$${body}`;
+}
+
 const MONTHS = [
   'Enero',
   'Febrero',

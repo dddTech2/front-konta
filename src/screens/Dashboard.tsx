@@ -4,7 +4,7 @@ import type { DashboardResponse } from '../api/types';
 import { Icon } from '../components/Icon';
 import { ResourceView } from '../components/ScreenState';
 import { StatusDot } from '../components/StatusDot';
-import { capitalize, fmtMoney, fmtNit, fmtPercent, fmtPeriod, taxLabel, vencePhrase } from '../format';
+import { capitalize, fmtMoney, fmtMoneyCompact, fmtNit, fmtPercent, fmtPeriod, taxLabel, vencePhrase } from '../format';
 import { useResource } from '../hooks/useResource';
 import '../styles/screens.css';
 
@@ -66,7 +66,12 @@ function Bars({ data }: { data: DashboardResponse }) {
         const current = index === historico.length - 1;
         return (
           <li key={bar.period_year_month} className="bar-col" aria-label={`${bar.mes}: ${fmtMoney(bar.total)}`}>
-            <div className={current ? 'bar bar-current' : 'bar'} style={{ height: `${height}%` }} />
+            <div className="bar-track">
+              <span className={current ? 'bar-value bar-value-current' : 'bar-value'} aria-hidden="true">
+                {fmtMoneyCompact(bar.total)}
+              </span>
+              <div className={current ? 'bar bar-current' : 'bar'} style={{ height: `${height}%` }} />
+            </div>
             <span className="bar-label">{bar.mes}</span>
           </li>
         );

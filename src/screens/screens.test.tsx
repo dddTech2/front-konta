@@ -95,11 +95,49 @@ describe('Dashboard', () => {
       (4000000 / 7300000) * 100,
       1,
     );
+
+    // Etiquetas compactas en cada barra (Story 7.3: AC #1, #5, #6)
+    expect(within(items[0]).getByText('$4 M')).toBeInTheDocument();
+    expect(within(items[1]).getByText('$5 M')).toBeInTheDocument();
+    expect(within(items[2]).getByText('$5,5 M')).toBeInTheDocument();
+    expect(within(items[3]).getByText('$6 M')).toBeInTheDocument();
+    expect(within(items[4]).getByText('$6,8 M')).toBeInTheDocument();
+    expect(within(items[5]).getByText('$7,3 M')).toBeInTheDocument();
+
+    const val0 = items[0].querySelector('.bar-value');
+    expect(val0).toHaveAttribute('aria-hidden', 'true');
+    expect(val0).not.toHaveClass('bar-value-current');
+
+    const val5 = items[5].querySelector('.bar-value');
+    expect(val5).toHaveAttribute('aria-hidden', 'true');
+    expect(val5).toHaveClass('bar-value-current');
+
     expect(screen.getByText('Hotel Sol')).toBeInTheDocument();
     expect(screen.getByText('FE-501 · 22 ago')).toBeInTheDocument();
     expect(screen.getByText('Tienda Norte')).toBeInTheDocument();
     expect(screen.queryByText('Cliente quinto')).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Ver todas' })).toHaveAttribute('href', '/historial');
+  });
+
+  it('mes con total 0 conserva la altura mínima de 8% y muestra $0 en la etiqueta compacta', async () => {
+    open('/inicio', {
+      [DASHBOARD_PATH]: {
+        body: {
+          ...DASHBOARD,
+          historico: [
+            ...DASHBOARD.historico.slice(0, 5),
+            { mes: 'Ago', period_year_month: '2026-08', total: 0 },
+          ],
+        },
+      },
+    });
+
+    const bars = await screen.findByRole('list', { name: 'Facturación de los últimos meses' });
+    const items = within(bars).getAllByRole('listitem');
+
+    expect(within(items[5]).getByText('$0')).toBeInTheDocument();
+    expect((items[5].querySelector('.bar') as HTMLElement).style.height).toBe('8%');
+    expect(items[5]).toHaveAccessibleName('Ago: $0');
   });
 
   it('alerta de próximo vencimiento enlaza al IVA y la campana al calendario', async () => {
