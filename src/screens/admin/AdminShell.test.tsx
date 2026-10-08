@@ -48,23 +48,21 @@ describe('AdminShell (Story 8.2)', () => {
       expect(clientesLink).not.toHaveClass('active');
       expect(operacionLink).not.toHaveClass('active');
 
-      // Marcador de Resumen
-      expect(screen.getByRole('heading', { name: 'Resumen' })).toBeInTheDocument();
-      expect(screen.getByText('Próximamente')).toBeInTheDocument();
+      // Pantalla de Resumen
+      expect(await screen.findByRole('heading', { name: 'Resumen' })).toBeInTheDocument();
 
       // No muestra SinNegocio a pesar de business_id null
       expect(screen.queryByText(/Estamos preparando tu cuenta/)).not.toBeInTheDocument();
       expect(screen.queryByRole('link', { name: /WhatsApp/ })).not.toBeInTheDocument();
     });
 
-    it('ADMIN en /admin/clientes muestra marcador de Clientes con enlace activo', async () => {
+    it('ADMIN en /admin/clientes muestra pantalla de Clientes con enlace activo', async () => {
       setToken('jwt-admin');
       mockApi({ 'GET /api/auth/me': { body: ME_ADMIN } });
 
       renderApp('/admin/clientes');
 
       expect(await screen.findByRole('heading', { name: 'Clientes' })).toBeInTheDocument();
-      expect(screen.getByText('Próximamente')).toBeInTheDocument();
 
       const nav = screen.getByRole('navigation', { name: 'Secciones de administración' });
       expect(within(nav).getByRole('link', { name: 'Clientes' })).toHaveClass('active');

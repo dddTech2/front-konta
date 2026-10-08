@@ -176,10 +176,14 @@ export function fmtFileSize(bytes: number): string {
 
 /**
  * Convierte una fecha ISO (asumiendo UTC si no trae zona horaria) a fecha AAAA-MM-DD en America/Bogota.
+ * Una fecha sin hora (`2026-10-12`, p. ej. una fecha de corte) ya es un día calendario: se devuelve igual.
+ * Convertirla como medianoche UTC la correría al día anterior en Bogotá.
  */
 export function toBogotaIsoDate(utcIso: string): string {
   if (!utcIso) return '';
-  const normalized = /Z$|[+-]\d{2}(?::?\d{2})?$/.test(utcIso) ? utcIso : `${utcIso}Z`;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(utcIso)) return utcIso;
+  // La zona solo puede venir después de la hora: sin esa condición el "-12" de una fecha parecería un desfase.
+  const normalized = /T.*(Z|[+-]\d{2}(?::?\d{2})?)$/.test(utcIso) ? utcIso : `${utcIso}Z`;
   const date = new Date(normalized);
   if (Number.isNaN(date.getTime())) return utcIso;
 
@@ -204,3 +208,15 @@ export function fmtBogotaDate(utcIso: string): string {
   return fmtDeadline(toBogotaIsoDate(utcIso));
 }
 
+const JOB_STATUS: Record<string, { label: string; tone: 'ok' | 'pending' | 'fail' }> = {
+  SUCCESS: { label: 'Exitosa', tone: 'ok' },
+  ENQUEUED: { label: 'En cola', tone: 'pending' },
+  PROCESSING: { label: 'Procesando', tone: 'pending' },
+  RETRY_PENDING: { label: 'Reintento pendiente', tone: 'pending' },
+  FAILED: { label: 'Fallida', tone: 'fail' },
+};
+
+/** Estado de una descarga DIAN (`DIANExtractionJob.status`) en español y su tono de color. */
+export function jobStatus(status: string): { label: string; tone: 'ok' | 'pending' | 'fail' } {
+  return JOB_STATUS[status] ?? { label: status, tone: 'pending' };
+}

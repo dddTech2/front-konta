@@ -47,12 +47,14 @@ export function isAdmin(me: Me | null): boolean {
 export class ApiError extends Error {
   readonly kind: ApiErrorKind;
   readonly status: number;
+  readonly code?: string;
 
-  constructor(kind: ApiErrorKind, status: number, message: string) {
+  constructor(kind: ApiErrorKind, status: number, message: string, code?: string) {
     super(message);
     this.name = 'ApiError';
     this.kind = kind;
     this.status = status;
+    this.code = code;
   }
 }
 
@@ -164,21 +166,23 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
 
   const errorBody = await readBody(response);
   const message = extractMessage(errorBody) ?? genericMessage(response.status);
+  const rawCode = asRecord(errorBody)?.code;
+  const errorCode = typeof rawCode === 'string' ? rawCode : undefined;
 
   // Único punto de manejo de status. Las llamadas públicas devuelven el error al formulario.
   if (auth) {
     switch (response.status) {
       case 401:
         handlers.onUnauthorized();
-        throw new ApiError('unauthorized', 401, message);
+        throw new ApiError('unauthorized', 401, message, errorCode);
       case 403:
         handlers.onForbidden(extractSuspension(errorBody));
-        throw new ApiError('forbidden', 403, message);
+        throw new ApiError('forbidden', 403, message, errorCode);
       default:
         break;
     }
   }
-  throw new ApiError('http', response.status, message);
+  throw new ApiError('http', response.status, message, errorCode);
 }
 
 export const getMe = (): Promise<Me> => apiFetch<Me>('/api/auth/me');

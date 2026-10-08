@@ -128,6 +128,12 @@ describe('format', () => {
     // 2026-10-06T21:57:00 UTC -> 16:57 Bogotá (mismo día 6 oct)
     expect(toBogotaIsoDate('2026-10-06T21:57:00')).toBe('2026-10-06');
     expect(fmtBogotaDate('2026-10-06T21:57:00')).toBe('6 oct 2026');
+    // Fecha sin hora (fecha de corte o de gracia): ya es un día calendario, no se corre al día anterior.
+    expect(toBogotaIsoDate('2026-10-12')).toBe('2026-10-12');
+    expect(fmtBogotaDate('2026-10-08')).toBe('8 oct 2026');
+    // Con zona explícita sí se convierte.
+    expect(toBogotaIsoDate('2026-10-07T02:00:00Z')).toBe('2026-10-06');
+    expect(toBogotaIsoDate('2026-10-07T02:00:00-05:00')).toBe('2026-10-07');
 
     // Madrugada UTC: 2026-10-07T02:30:00 UTC -> 21:30 Bogotá del día anterior (6 oct)
     expect(toBogotaIsoDate('2026-10-07T02:30:00')).toBe('2026-10-06');

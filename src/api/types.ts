@@ -206,3 +206,6 @@ export interface DocumentLinkResponse {
   expires_in: number;
 }
 
+export * from './adminTypes';
+
+

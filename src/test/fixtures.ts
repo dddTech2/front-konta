@@ -1,5 +1,8 @@
 import type {
+  AdminClientsListResponse,
+  AdminSummaryResponse,
   CalendarResponse,
+  ClientDetailResponse,
   DashboardResponse,
   DocumentsResponse,
   IncomeSummaryResponse,
@@ -221,6 +224,186 @@ export const DOCUMENTS: DocumentsResponse = {
   ],
 };
 
+export const ADMIN_SUMMARY: AdminSummaryResponse = {
+  clients_by_status: {
+    ACTIVO: 15,
+    EN_MORA: 3,
+    BLOQUEADO: 2,
+    CANCELADO: 1,
+    SIN_SUSCRIPCION: 4,
+  },
+  clients_by_income_source: {
+    DIAN: 20,
+    MANUAL_SALES: 5,
+  },
+  upcoming_cutoffs: [
+    {
+      business_id: 'biz-1',
+      commercial_name: 'Panadería La Espiga',
+      nit: '900123456',
+      cutoff_date: '2026-10-12',
+    },
+    {
+      business_id: 'biz-2',
+      commercial_name: 'Cafetería Central',
+      nit: '901234567',
+      cutoff_date: '2026-10-14',
+    },
+  ],
+  in_grace: [
+    {
+      business_id: 'biz-3',
+      commercial_name: 'Ferretería El Tornillo',
+      nit: '900987654',
+      cutoff_date: '2026-10-05',
+      grace_period_end: '2026-10-10',
+    },
+  ],
+  payments_this_month: {
+    count: 12,
+    total: 3600000,
+  },
+  failed_jobs_24h: 1,
+  unlinked_telegram: 3,
+  worker: {
+    silence_threshold_minutes: 15,
+    workers: [
+      {
+        name: 'worker-primary',
+        last_seen_at: '2026-10-07T18:15:00',
+        minutes_since: 4,
+        is_silent: false,
+      },
+    ],
+  },
+};
+
+export const ADMIN_CLIENTS: AdminClientsListResponse = {
+  items: [
+    {
+      business_id: 'biz-1',
+      user_id: 'usr-1',
+      legal_name: 'La Espiga SAS',
+      commercial_name: 'Panadería La Espiga',
+      nit: '900123456',
+      dv: '7',
+      income_source: 'DIAN',
+      taxpayer_type: 'PERSONA_JURIDICA',
+      contact_name: 'Carlos Pérez',
+      phone: '3001112233',
+      is_telegram_linked: true,
+      plan: 'TRIMESTRAL',
+      subscription_status: 'ACTIVO',
+      cutoff_date: '2026-10-12',
+      grace_period_end: null,
+      is_active: true,
+    },
+    {
+      business_id: 'biz-2',
+      user_id: 'usr-2',
+      legal_name: 'Cafetería Central SAS',
+      commercial_name: 'Cafetería Central',
+      nit: '901234567',
+      dv: '1',
+      income_source: 'DIAN',
+      taxpayer_type: 'PERSONA_JURIDICA',
+      contact_name: 'María Gómez',
+      phone: '3109876543',
+      is_telegram_linked: false,
+      plan: 'MENSUAL',
+      subscription_status: 'EN_MORA',
+      cutoff_date: '2026-10-05',
+      grace_period_end: '2026-10-10',
+      is_active: true,
+    },
+    {
+      business_id: 'biz-3',
+      user_id: 'usr-3',
+      legal_name: 'El Tornillo SAS',
+      commercial_name: 'Ferretería El Tornillo',
+      nit: '900987654',
+      dv: '3',
+      income_source: 'MANUAL_SALES',
+      taxpayer_type: 'PERSONA_JURIDICA',
+      contact_name: 'Jorge Ramos',
+      phone: '3205554433',
+      is_telegram_linked: true,
+      plan: 'SEMESTRAL',
+      subscription_status: 'BLOQUEADO',
+      cutoff_date: '2026-09-30',
+      grace_period_end: '2026-10-05',
+      is_active: false,
+    },
+  ],
+  total: 3,
+  page: 1,
+  page_size: 20,
+};
+
+export const ADMIN_CLIENT_DETAIL: ClientDetailResponse = {
+  business: {
+    id: 'biz-1',
+    legal_name: 'La Espiga SAS',
+    commercial_name: 'Panadería La Espiga',
+    nit: '900123456',
+    dv: '7',
+    taxpayer_type: 'PERSONA_JURIDICA',
+    legal_rep_doc: '80123456',
+    economic_activity: 'Elaboración de productos de panadería',
+    income_source: 'DIAN',
+    is_active: true,
+    created_at: '2026-01-15T10:00:00',
+  },
+  contact: {
+    id: 'usr-1',
+    full_name: 'Carlos Pérez',
+    phone: '3001112233',
+    email: 'carlos@laespiga.com',
+    is_telegram_linked: true,
+    telegram_chat_id: 12345678,
+    telegram_username: 'carlosperez',
+  },
+  tax_profile: {
+    iva_periodicity: 'BIMESTRAL',
+    is_withholding_agent: true,
+  },
+  subscription: {
+    id: 'sub-1',
+    plan: 'TRIMESTRAL',
+    status: 'ACTIVO',
+    discount_rate: '10',
+    base_price: '300000',
+    final_price: '270000',
+    start_date: '2026-07-12',
+    cutoff_date: '2026-10-12',
+    grace_period_end: '2026-10-17',
+  },
+  recent_payments: [
+    {
+      id: 'pay-1',
+      payment_date: '2026-07-10',
+      amount: '270000.00',
+      reference_code: 'REF-778899',
+      payment_method: 'TRANSFERENCIA',
+      verified_by_admin_id: 'adm-1',
+      created_at: '2026-07-10T14:30:00',
+    },
+  ],
+  recent_extractions: [
+    {
+      id: 'ext-1',
+      period: '2026-08',
+      status: 'SUCCESS',
+      attempts: 1,
+      next_run_at: null,
+      finished_at: '2026-09-01T04:15:00',
+      error_code: null,
+    },
+  ],
+  active_documents_count: 3,
+  has_pending_activation_link: false,
+};
+
 /** Respuestas por defecto de las pantallas de datos, para las pruebas que solo miran el shell. */
 export const DATA_ROUTES: Record<string, MockReply> = {
   [`GET /api/dashboard/${BUSINESS_ID}`]: { body: DASHBOARD },
@@ -230,6 +413,8 @@ export const DATA_ROUTES: Record<string, MockReply> = {
   [`GET /api/income-summary/${BUSINESS_ID}`]: { body: INCOME_SUMMARY },
   [`GET /api/sales/${BUSINESS_ID}`]: { body: SALES_LIST },
   [`GET /api/documents/${BUSINESS_ID}`]: { body: DOCUMENTS },
+  'GET /api/admin/summary': { body: ADMIN_SUMMARY },
+  'GET /api/admin/clients': { body: ADMIN_CLIENTS },
 };
 
 

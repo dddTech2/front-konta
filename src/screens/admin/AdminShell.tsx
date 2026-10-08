@@ -2,10 +2,11 @@ import { NavLink, Navigate, Route, Routes } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext';
 import { BRAND_NAME } from '../../brand';
 import AdminClientes from './AdminClientes';
+import AdminFicha from './AdminFicha';
 import AdminOperacion from './AdminOperacion';
 import AdminResumen from './AdminResumen';
 
-export { AdminClientes, AdminOperacion, AdminResumen };
+export { AdminClientes, AdminFicha, AdminOperacion, AdminResumen };
 
 export default function AdminShell() {
   const { logout } = useAuth();
@@ -43,6 +44,7 @@ export default function AdminShell() {
           <Routes>
             <Route index element={<AdminResumen />} />
             <Route path="clientes" element={<AdminClientes />} />
+            <Route path="clientes/:businessId" element={<AdminFicha />} />
             <Route path="operacion" element={<AdminOperacion />} />
             <Route path="*" element={<Navigate to="/admin" replace />} />
           </Routes>
