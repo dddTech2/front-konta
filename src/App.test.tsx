@@ -35,6 +35,7 @@ describe('Login OTP', () => {
     await loginThroughForm(user);
 
     expect(await screen.findByRole('navigation', { name: 'Secciones' })).toBeInTheDocument();
+    expect(document.querySelector('.shell-header img.shell-logo')).toBeInTheDocument();
     expect(getToken()).toBe('jwt-1');
     expect(window.sessionStorage.getItem('kontable.token')).toBe('jwt-1');
     expect(window.localStorage.length).toBe(0);
@@ -169,6 +170,7 @@ describe('Sesión y rutas protegidas', () => {
     renderApp('/inicio');
 
     expect(await screen.findByRole('heading', { name: 'Estamos preparando tu cuenta' })).toBeInTheDocument();
+    expect(document.querySelector('img.brand-mark')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /WhatsApp/ })).toHaveAttribute('href', expect.stringContaining('wa.me/'));
     expect(screen.queryByLabelText('Celular o NIT')).not.toBeInTheDocument();
     expect(getToken()).toBe('jwt-1');

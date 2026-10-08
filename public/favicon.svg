@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="340 340 1325 1325">
+<!-- Favicon del sitio. No es el isotipo tal cual: el anillo original mide 7,6
+     unidades de grosor sobre 1325 (0,57 % del ancho), que a 16 px equivale a
+     0,09 px y se deshace en un borrón gris. Se sustituye por un disco macizo
+     con el monograma calado -el par positivo/negativo del manual-, que es lo
+     unico legible a tamano de pestana. En pestanas oscuras se invierte. -->
+<style>
+  .disc{fill:#1E3431}
+  .mark{fill:#F4F4F2}
+  .dot{fill:#CE7F67}
+  @media (prefers-color-scheme: dark){
+    .disc{fill:#F4F4F2}
+    .mark{fill:#1E3431}
+    .dot{fill:#BC5539}
+  }
+</style>
+<circle class="disc" cx="1002.5" cy="1002.5" r="662.5"/>
+<g transform="translate(1002.5 1002.5) scale(1.08) translate(-1002.5 -1002.5)">
+  <path class="mark" d="M1326.2,1255.2v21.7c-10,0-19.2,0-29.2-0.8c-62.5-3.3-97.6-21.7-135.1-75.9c-29.2-40.9-59.2-92.6-84.2-133.4c-14.2-23.3-28.4-33.4-71.7-33.4h-26.7l-23.5-27.5h63.6c42.5,0,70.1-6.7,90.9-23.3c32.5-25,45.9-58.4,45.9-103.4c0-80.3-47-115.5-102.1-122.2c-44.8,3.8-55.8,17.8-99.2,57.2c-31.7,29.2-100.1,111-156.8,168.6c1,0,6.7,0,33,0c60.4,0,108.2,93.2,135.4,134c32.6,47.1,51.6,70.6,73.3,94.2c24.4,27.2,41.6,37.1,61.6,42.5v23.5c-10.9,0-20.8,0-31.7-0.9c-67.9-3.6-105.9-23.5-146.7-82.4c-31.7-44.4-64.3-100.5-91.4-144.9c-15.4-25.3-30.8-36.2-77.9-36.2h-29v155.5c0,74.3,8.3,80.2,76.7,85.3v23.6H584.5v-23.6c63.4-5.1,70.9-11,70.9-85.3V837.9c0-76.8-7.5-81-73.4-86.1v-23.6h215.2v23.6c-64.2,5.1-72.6,11-72.6,86.1v144.6c18.3-5,35-16.7,58.4-38.4c45.9-44.2,102.6-101.7,140.1-147.6c24.2-30,24.2-36.7-14.2-40.9h-18.3h0v-27.5h0h154.6c60.9,0,101.7,7.5,133.4,28.4c33.4,21.7,55,59.2,55,109.2c0,71.7-44.2,115.9-105.9,142.6c14.2,27.5,49.2,83.4,74.2,120.9c30,43.4,47.5,65,67.5,86.7C1292,1241,1307.9,1250.2,1326.2,1255.2z"/>
+  <circle class="dot" cx="1385.5" cy="1239.3" r="37.5"/>
+</g>
+</svg>

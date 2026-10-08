@@ -1,6 +1,7 @@
 import { useAuth } from '../auth/AuthContext';
 import { BRAND_NAME } from '../brand';
 import { whatsappUrl } from '../config';
+import isotipoClaro from '../assets/brand/isotipo-claro.svg';
 
 /** Sesión válida pero sin negocio aprovisionado (`/me` con `business_id` null). No hay llamadas a dashboard. */
 export default function SinNegocio() {
@@ -8,9 +9,7 @@ export default function SinNegocio() {
 
   return (
     <main className="page page-center">
-      <div className="brand-mark" aria-hidden="true">
-        K.
-      </div>
+      <img className="brand-mark" src={isotipoClaro} alt="" aria-hidden="true" width="64" height="64" />
       <h1 className="h-title">Estamos preparando tu cuenta</h1>
       <p className="lead">
         Ya iniciaste sesión, pero todavía no tenemos un negocio activo asociado a tu cuenta. Escríbele a

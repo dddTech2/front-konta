@@ -45,17 +45,9 @@ body {
 }
 
 .brand-mark {
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  background: var(--verde);
-  color: var(--beige);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: var(--font-display);
-  font-size: 22px;
-  font-weight: 600;
+  width: 64px;
+  height: 64px;
+  display: block;
   margin-bottom: 26px;
 }
 
@@ -85,6 +77,29 @@ body {
   font-size: 12px;
   line-height: 1.5;
   margin: 18px 0 0;
+}
+
+.login-brand-footer {
+  margin-top: 32px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--gris-medio);
+}
+
+.login-brand-footer span {
+  font-size: 13px;
+  color: var(--gris-medio);
+}
+
+.login-brand-logo {
+  width: 180px;
+  height: auto;
+  display: block;
+  margin: 0 auto;
 }
 
 .card {
@@ -325,9 +340,17 @@ body {
 }
 
 .shell-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
   font-family: var(--font-display);
   font-size: 22px;
   font-weight: 600;
+}
+
+.shell-logo {
+  display: block;
+  flex-shrink: 0;
 }
 
 .shell-header .btn-link {
@@ -396,6 +419,11 @@ body {
 
 /* Con 5 secciones (DIAN + Documentos) el menú no cabe a 360 px con el relleno normal. */
 @media (max-width: 400px) {
+  .shell-logo {
+    width: 28px;
+    height: 28px;
+  }
+
   .shell-nav {
     gap: 2px;
     padding: 12px 8px 0;

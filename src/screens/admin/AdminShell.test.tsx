@@ -32,6 +32,7 @@ describe('AdminShell (Story 8.2)', () => {
 
       // Cabecera: Marca, "Administración" y botón Salir
       expect(await screen.findByText(BRAND_NAME)).toBeInTheDocument();
+      expect(document.querySelector('.admin-header img.admin-logo')).toBeInTheDocument();
       expect(screen.getByText('Administración')).toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'Salir' })).toBeInTheDocument();
 

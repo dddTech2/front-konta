@@ -4,6 +4,8 @@ import { ApiError, NETWORK_ERROR_MESSAGE, requestOtp, verifyOtp } from '../api/c
 import { useAuth } from '../auth/AuthContext';
 import { BRAND_NAME, BRAND_TAGLINE } from '../brand';
 import { whatsappUrl } from '../config';
+import isotipoClaro from '../assets/brand/isotipo-claro.svg';
+import logotipoHorizontal from '../assets/brand/logotipo-horizontal-claro.svg';
 
 type Step = 'identifier' | 'code';
 
@@ -92,9 +94,7 @@ export default function Login() {
 
   return (
     <main className="page">
-      <div className="brand-mark" aria-hidden="true">
-        K.
-      </div>
+      <img className="brand-mark" src={isotipoClaro} alt="" aria-hidden="true" width="64" height="64" />
       <h1 className="h-title">Ingresa a {BRAND_NAME}</h1>
       <p className="brand-tagline">{BRAND_TAGLINE}</p>
 
@@ -186,6 +186,15 @@ export default function Login() {
         <br />
         Este acceso es exclusivo para clientes activos de la asesoría de Katerinn Romero.
       </p>
+
+      <footer className="login-brand-footer">
+        <span>Un servicio de</span>
+        <img
+          src={logotipoHorizontal}
+          alt="Katerinn Romero — Asesoría contable, tributaria y financiera"
+          className="login-brand-logo"
+        />
+      </footer>
     </main>
   );
 }

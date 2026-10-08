@@ -31,10 +31,18 @@
 }
 
 .admin-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
   font-family: var(--font-display);
   font-size: 22px;
   font-weight: 600;
   color: var(--beige);
+}
+
+.admin-logo {
+  display: block;
+  flex-shrink: 0;
 }
 
 .admin-badge {

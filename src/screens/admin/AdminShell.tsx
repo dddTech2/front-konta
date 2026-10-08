@@ -1,6 +1,7 @@
 import { NavLink, Navigate, Route, Routes } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext';
 import { BRAND_NAME } from '../../brand';
+import isotipoOscuro from '../../assets/brand/isotipo-oscuro.svg';
 import AdminClientes from './AdminClientes';
 import AdminFicha from './AdminFicha';
 import AdminNuevoCliente from './AdminNuevoCliente';
@@ -17,7 +18,10 @@ export default function AdminShell() {
       <header className="admin-header">
         <div className="admin-header-inner">
           <div className="admin-brand-group">
-            <span className="admin-brand">{BRAND_NAME}</span>
+            <span className="admin-brand">
+              <img src={isotipoOscuro} alt="" aria-hidden="true" className="admin-logo" width="32" height="32" />
+              {BRAND_NAME}
+            </span>
             <span className="admin-badge">Administración</span>
           </div>
           <div className="admin-actions">
