@@ -1,7 +1,27 @@
+import { useRef, useState, type FormEvent } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
-import { getAdminClientDetail } from '../../api/adminEndpoints';
+import {
+  generateAdminActivationLink,
+  getAdminClientDetail,
+  recordAdminPayment,
+  releaseAdminTelegram,
+  updateAdminIncomeSource,
+  updateAdminTaxProfile,
+} from '../../api/adminEndpoints';
+import type { AdminIncomeSource } from '../../api/adminTypes';
+import { ApiError, NETWORK_ERROR_MESSAGE } from '../../api/client';
+import Dialog from '../../components/Dialog';
 import { ResourceView } from '../../components/ScreenState';
-import { fmtBogotaDate, fmtDeadline, fmtMoney, fmtNit, fmtPercent, fmtPeriod, jobStatus } from '../../format';
+import { clientWhatsappUrl } from '../../config';
+import {
+  fmtBogotaDate,
+  fmtDeadline,
+  fmtMoney,
+  fmtNit,
+  fmtPercent,
+  fmtPeriod,
+  jobStatus,
+} from '../../format';
 import { useResource } from '../../hooks/useResource';
 
 function statusBadge(status?: string | null) {
@@ -70,6 +90,222 @@ export default function AdminFicha() {
     [businessId],
   );
 
+  // ---------- Estado: Registrar pago (AC #2) ----------
+  const [paymentOpen, setPaymentOpen] = useState(false);
+  const [paymentStep, setPaymentStep] = useState<'input' | 'confirm'>('input');
+  const [paymentAmount, setPaymentAmount] = useState('');
+  const [paymentRef, setPaymentRef] = useState('');
+  const [paymentBusy, setPaymentBusy] = useState(false);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
+  const paymentSubmitting = useRef(false);
+
+  // ---------- Estado: Origen de ingresos (AC #3) ----------
+  const [incomeSourceOpen, setIncomeSourceOpen] = useState(false);
+  const [selectedIncomeSource, setSelectedIncomeSource] = useState<AdminIncomeSource>('DIAN');
+  const [incomeSourceBusy, setIncomeSourceBusy] = useState(false);
+  const [incomeSourceError, setIncomeSourceError] = useState<string | null>(null);
+  const incomeSourceSubmitting = useRef(false);
+
+  // ---------- Estado: Perfil tributario (AC #3) ----------
+  const [taxProfileOpen, setTaxProfileOpen] = useState(false);
+  const [ivaPeriodicity, setIvaPeriodicity] = useState<string>('');
+  const [isWithholding, setIsWithholding] = useState(false);
+  const [taxProfileBusy, setTaxProfileBusy] = useState(false);
+  const [taxProfileError, setTaxProfileError] = useState<string | null>(null);
+  const taxProfileSubmitting = useRef(false);
+
+  // ---------- Estado: Telegram (AC #4) ----------
+  const [activationModalOpen, setActivationModalOpen] = useState(false);
+  const [activationLink, setActivationLink] = useState('');
+  const [activationBusy, setActivationBusy] = useState(false);
+  const [activationError, setActivationError] = useState<string | null>(null);
+  const [copiedLink, setCopiedLink] = useState(false);
+  const activationSubmitting = useRef(false);
+
+  const [unlinkConfirmOpen, setUnlinkConfirmOpen] = useState(false);
+  const [unlinkBusy, setUnlinkBusy] = useState(false);
+  const [unlinkError, setUnlinkError] = useState<string | null>(null);
+  const unlinkSubmitting = useRef(false);
+
+  // Handler: Confirmar / Registrar pago
+  function handlePaymentContinue(e: FormEvent) {
+    e.preventDefault();
+    setPaymentError(null);
+    const cleanAmount = paymentAmount.replace(/\D/g, '');
+    if (!cleanAmount || Number(cleanAmount) <= 0) {
+      setPaymentError('Escribe un monto de pago válido (solo dígitos).');
+      return;
+    }
+    if (!paymentRef.trim()) {
+      setPaymentError('Escribe el código o referencia del pago.');
+      return;
+    }
+    setPaymentStep('confirm');
+  }
+
+  async function handlePaymentConfirm() {
+    if (paymentSubmitting.current) return;
+    paymentSubmitting.current = true;
+    setPaymentBusy(true);
+    setPaymentError(null);
+
+    try {
+      await recordAdminPayment(businessId, {
+        amount: Number(paymentAmount.replace(/\D/g, '')),
+        reference: paymentRef.trim(),
+      });
+      setPaymentOpen(false);
+      retry();
+    } catch (err) {
+      if (err instanceof ApiError) {
+        if (err.kind !== 'unauthorized' && err.kind !== 'forbidden') {
+          setPaymentError(err.message);
+        }
+      } else {
+        setPaymentError(NETWORK_ERROR_MESSAGE);
+      }
+    } finally {
+      paymentSubmitting.current = false;
+      setPaymentBusy(false);
+    }
+  }
+
+  // Handler: Guardar origen de ingresos
+  async function handleIncomeSourceSubmit(e: FormEvent) {
+    e.preventDefault();
+    if (incomeSourceSubmitting.current) return;
+    incomeSourceSubmitting.current = true;
+    setIncomeSourceBusy(true);
+    setIncomeSourceError(null);
+
+    try {
+      await updateAdminIncomeSource(businessId, { income_source: selectedIncomeSource });
+      setIncomeSourceOpen(false);
+      retry();
+    } catch (err) {
+      if (err instanceof ApiError) {
+        if (err.kind !== 'unauthorized' && err.kind !== 'forbidden') {
+          setIncomeSourceError(err.message);
+        }
+      } else {
+        setIncomeSourceError(NETWORK_ERROR_MESSAGE);
+      }
+    } finally {
+      incomeSourceSubmitting.current = false;
+      setIncomeSourceBusy(false);
+    }
+  }
+
+  // Handler: Guardar perfil tributario
+  async function handleTaxProfileSubmit(e: FormEvent) {
+    e.preventDefault();
+    if (taxProfileSubmitting.current) return;
+    taxProfileSubmitting.current = true;
+    setTaxProfileBusy(true);
+    setTaxProfileError(null);
+
+    try {
+      await updateAdminTaxProfile(businessId, {
+        iva_periodicity: ivaPeriodicity ? (ivaPeriodicity as 'BIMESTRAL' | 'CUATRIMESTRAL') : null,
+        is_withholding_agent: isWithholding,
+      });
+      setTaxProfileOpen(false);
+      retry();
+    } catch (err) {
+      if (err instanceof ApiError) {
+        if (err.kind !== 'unauthorized' && err.kind !== 'forbidden') {
+          setTaxProfileError(err.message);
+        }
+      } else {
+        setTaxProfileError(NETWORK_ERROR_MESSAGE);
+      }
+    } finally {
+      taxProfileSubmitting.current = false;
+      setTaxProfileBusy(false);
+    }
+  }
+
+  // Handler: Generar enlace de activación de Telegram
+  async function handleGenerateActivationLink() {
+    if (activationSubmitting.current) return;
+    activationSubmitting.current = true;
+    setActivationBusy(true);
+    setActivationError(null);
+
+    try {
+      const res = await generateAdminActivationLink(businessId);
+      setActivationLink(res.activation_link);
+      setActivationModalOpen(true);
+    } catch (err) {
+      if (err instanceof ApiError) {
+        if (err.kind !== 'unauthorized' && err.kind !== 'forbidden') {
+          setActivationError(err.message);
+        }
+      } else {
+        setActivationError(NETWORK_ERROR_MESSAGE);
+      }
+    } finally {
+      activationSubmitting.current = false;
+      setActivationBusy(false);
+    }
+  }
+
+  // Handler: Desvincular Telegram
+  async function handleUnlinkTelegram() {
+    if (unlinkSubmitting.current) return;
+    unlinkSubmitting.current = true;
+    setUnlinkBusy(true);
+    setUnlinkError(null);
+
+    try {
+      await releaseAdminTelegram(businessId);
+      setUnlinkConfirmOpen(false);
+      retry();
+    } catch (err) {
+      if (err instanceof ApiError) {
+        if (err.kind !== 'unauthorized' && err.kind !== 'forbidden') {
+          setUnlinkError(err.message);
+        }
+      } else {
+        setUnlinkError(NETWORK_ERROR_MESSAGE);
+      }
+    } finally {
+      unlinkSubmitting.current = false;
+      setUnlinkBusy(false);
+    }
+  }
+
+  // Helper para copiar al portapapeles
+  async function handleCopyActivationLink() {
+    if (!activationLink) return;
+    try {
+      if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+        await navigator.clipboard.writeText(activationLink);
+        setCopiedLink(true);
+        setTimeout(() => setCopiedLink(false), 2500);
+        return;
+      }
+    } catch {
+      // Fallback
+    }
+
+    try {
+      const input = document.createElement('textarea');
+      input.value = activationLink;
+      input.style.position = 'fixed';
+      input.style.opacity = '0';
+      document.body.appendChild(input);
+      input.focus();
+      input.select();
+      document.execCommand('copy');
+      document.body.removeChild(input);
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 2500);
+    } catch {
+      setCopiedLink(false);
+    }
+  }
+
   return (
     <section aria-label="Ficha del cliente" className="screen admin-screen admin-ficha-screen">
       <div className="admin-ficha-nav">
@@ -83,6 +319,8 @@ export default function AdminFicha() {
           const { business, contact, tax_profile, subscription, recent_payments, recent_extractions } = ficha;
           const phoneDigits = contact.phone ? contact.phone.replace(/\D/g, '') : '';
           const waPhone = phoneDigits.startsWith('57') ? phoneDigits : `57${phoneDigits}`;
+
+          const isManual = business.income_source === 'MANUAL_SALES';
 
           return (
             <div className="admin-ficha-content">
@@ -108,7 +346,20 @@ export default function AdminFicha() {
                   </div>
                   <div className="admin-meta-col">
                     <span className="admin-meta-label">Origen de ingresos</span>
-                    <strong className="admin-meta-value">{tipoLabel(business.income_source)}</strong>
+                    <div className="admin-meta-with-action">
+                      <strong className="admin-meta-value">{tipoLabel(business.income_source)}</strong>
+                      <button
+                        type="button"
+                        className="btn-link admin-btn-inline-action"
+                        onClick={() => {
+                          setSelectedIncomeSource(business.income_source as AdminIncomeSource);
+                          setIncomeSourceError(null);
+                          setIncomeSourceOpen(true);
+                        }}
+                      >
+                        Cambiar
+                      </button>
+                    </div>
                   </div>
                   <div className="admin-meta-col">
                     <span className="admin-meta-label">ID del negocio</span>
@@ -117,11 +368,16 @@ export default function AdminFicha() {
                 </div>
               </div>
 
-              {/* Grid 2 columnas: Contacto y Perfil Tributario */}
-              <div className="admin-grid admin-grid-2">
+              {/* Grid 2 columnas: Contacto y Perfil Tributario (solo si es DIAN) */}
+              <div className={`admin-grid ${isManual ? '' : 'admin-grid-2'}`}>
                 {/* Contacto */}
                 <div className="card admin-card">
                   <h2 className="admin-section-title">Contacto</h2>
+                  {activationError && (
+                    <p className="form-error" role="alert">
+                      {activationError}
+                    </p>
+                  )}
                   <div className="admin-kv-list">
                     <div className="admin-kv-item">
                       <span className="admin-kv-key">Nombre</span>
@@ -161,52 +417,95 @@ export default function AdminFicha() {
                         )}
                       </div>
                     </div>
-                    <div className="admin-kv-item">
+                    <div className="admin-kv-item admin-tg-item">
                       <span className="admin-kv-key">Telegram</span>
-                      <span className="admin-kv-val">
-                        <span
-                          className={`admin-pill-telegram ${contact.is_telegram_linked ? 'linked' : 'unlinked'}`}
-                        >
-                          {contact.is_telegram_linked ? 'Vinculado' : 'Sin vincular'}
-                        </span>
-                        {contact.telegram_username && (
-                          <span className="admin-tg-username"> (@{contact.telegram_username})</span>
-                        )}
-                      </span>
+                      <div className="admin-kv-val admin-tg-val-box">
+                        <div className="admin-tg-status-row">
+                          <span
+                            className={`admin-pill-telegram ${contact.is_telegram_linked ? 'linked' : 'unlinked'}`}
+                          >
+                            {contact.is_telegram_linked ? 'Vinculado' : 'Sin vincular'}
+                          </span>
+                          {contact.telegram_username && (
+                            <span className="admin-tg-username"> (@{contact.telegram_username})</span>
+                          )}
+                        </div>
+                        {/* Acciones de Telegram (AC #4) */}
+                        <div className="admin-tg-actions">
+                          {contact.is_telegram_linked ? (
+                            <button
+                              type="button"
+                              className="btn-outline admin-btn-sm admin-btn-danger"
+                              onClick={() => {
+                                setUnlinkError(null);
+                                setUnlinkConfirmOpen(true);
+                              }}
+                              disabled={unlinkBusy}
+                            >
+                              Desvincular Telegram
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              className="btn-outline admin-btn-sm"
+                              onClick={handleGenerateActivationLink}
+                              disabled={activationBusy}
+                            >
+                              {activationBusy ? 'Generando…' : 'Generar enlace de activación'}
+                            </button>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                {/* Perfil tributario */}
-                <div className="card admin-card">
-                  <h2 className="admin-section-title">Perfil tributario</h2>
-                  <div className="admin-kv-list">
-                    <div className="admin-kv-item">
-                      <span className="admin-kv-key">Periodicidad IVA</span>
-                      <strong className="admin-kv-val">
-                        {tax_profile.iva_periodicity || 'No definida'}
-                      </strong>
+                {/* Perfil tributario: oculto para ventas manuales (AC #3) */}
+                {!isManual && (
+                  <div className="card admin-card">
+                    <div className="admin-card-head">
+                      <h2 className="admin-section-title">Perfil tributario</h2>
+                      <button
+                        type="button"
+                        className="btn-link admin-btn-inline-action"
+                        onClick={() => {
+                          setIvaPeriodicity(tax_profile.iva_periodicity || '');
+                          setIsWithholding(Boolean(tax_profile.is_withholding_agent));
+                          setTaxProfileError(null);
+                          setTaxProfileOpen(true);
+                        }}
+                      >
+                        Editar perfil
+                      </button>
                     </div>
-                    <div className="admin-kv-item">
-                      <span className="admin-kv-key">Agente de retención</span>
-                      <span className="admin-kv-val">
-                        {tax_profile.is_withholding_agent ? 'Sí' : 'No'}
-                      </span>
-                    </div>
-                    <div className="admin-kv-item">
-                      <span className="admin-kv-key">Actividad económica</span>
-                      <span className="admin-kv-val">
-                        {business.economic_activity || 'No registrada'}
-                      </span>
-                    </div>
-                    {business.legal_rep_doc && (
+                    <div className="admin-kv-list">
                       <div className="admin-kv-item">
-                        <span className="admin-kv-key">Doc. Rep. Legal</span>
-                        <span className="admin-kv-val">{business.legal_rep_doc}</span>
+                        <span className="admin-kv-key">Periodicidad IVA</span>
+                        <strong className="admin-kv-val">
+                          {tax_profile.iva_periodicity || 'No definida'}
+                        </strong>
                       </div>
-                    )}
+                      <div className="admin-kv-item">
+                        <span className="admin-kv-key">Agente de retención</span>
+                        <span className="admin-kv-val">
+                          {tax_profile.is_withholding_agent ? 'Sí' : 'No'}
+                        </span>
+                      </div>
+                      <div className="admin-kv-item">
+                        <span className="admin-kv-key">Actividad económica</span>
+                        <span className="admin-kv-val">
+                          {business.economic_activity || 'No registrada'}
+                        </span>
+                      </div>
+                      {business.legal_rep_doc && (
+                        <div className="admin-kv-item">
+                          <span className="admin-kv-key">Doc. Rep. Legal</span>
+                          <span className="admin-kv-val">{business.legal_rep_doc}</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
 
               {/* Suscripción */}
@@ -264,9 +563,24 @@ export default function AdminFicha() {
                 )}
               </div>
 
-              {/* Pagos recientes */}
+              {/* Pagos recientes con acción "Registrar pago" (AC #2) */}
               <div className="card admin-card">
-                <h2 className="admin-section-title">Pagos recientes</h2>
+                <div className="admin-card-head">
+                  <h2 className="admin-section-title">Pagos recientes</h2>
+                  <button
+                    type="button"
+                    className="btn-primary admin-btn-action"
+                    onClick={() => {
+                      setPaymentAmount('');
+                      setPaymentRef('');
+                      setPaymentStep('input');
+                      setPaymentError(null);
+                      setPaymentOpen(true);
+                    }}
+                  >
+                    Registrar pago
+                  </button>
+                </div>
                 {recent_payments.length === 0 ? (
                   <p className="admin-empty-text">No hay pagos registrados.</p>
                 ) : (
@@ -366,6 +680,310 @@ export default function AdminFicha() {
                   </p>
                 </div>
               </div>
+
+              {/* ================================================================
+                  DIÁLOGOS ACCESIBLES (AC #2, #3, #4, #5)
+                  ================================================================ */}
+
+              {/* Diálogo: Registrar pago (AC #2) */}
+              <Dialog
+                isOpen={paymentOpen}
+                onClose={() => setPaymentOpen(false)}
+                title={paymentStep === 'input' ? 'Registrar pago' : 'Confirmar pago'}
+                busy={paymentBusy}
+              >
+                {paymentError && (
+                  <p className="form-error" role="alert">
+                    {paymentError}
+                  </p>
+                )}
+
+                {paymentStep === 'input' ? (
+                  <form onSubmit={handlePaymentContinue} noValidate>
+                    <div className="field">
+                      <label className="field-label" htmlFor="pay-amount">
+                        Monto del pago
+                      </label>
+                      <input
+                        id="pay-amount"
+                        className="field-input"
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="Ej. 270000"
+                        value={paymentAmount}
+                        onChange={(e) => setPaymentAmount(e.target.value.replace(/\D/g, ''))}
+                        disabled={paymentBusy}
+                      />
+                      <span className="field-hint" aria-live="polite">
+                        Formato: {paymentAmount ? fmtMoney(Number(paymentAmount)) : '$0'}
+                      </span>
+                    </div>
+
+                    <div className="field">
+                      <label className="field-label" htmlFor="pay-reference">
+                        Referencia de pago
+                      </label>
+                      <input
+                        id="pay-reference"
+                        className="field-input"
+                        type="text"
+                        placeholder="Ej. REF-889900 o comprobante"
+                        value={paymentRef}
+                        onChange={(e) => setPaymentRef(e.target.value)}
+                        disabled={paymentBusy}
+                      />
+                    </div>
+
+                    <div className="stack admin-dialog-actions">
+                      <button className="btn-primary" type="submit" disabled={paymentBusy}>
+                        Continuar
+                      </button>
+                      <button
+                        className="btn-outline"
+                        type="button"
+                        onClick={() => setPaymentOpen(false)}
+                        disabled={paymentBusy}
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  </form>
+                ) : (
+                  <div className="admin-confirm-box">
+                    <p className="admin-confirm-text">
+                      Registrar pago de{' '}
+                      <strong>{fmtMoney(Number(paymentAmount))}</strong> a{' '}
+                      <strong>{business.commercial_name}</strong>
+                    </p>
+                    <p className="admin-muted-text">
+                      Referencia: <code>{paymentRef}</code>
+                    </p>
+
+                    <div className="stack admin-dialog-actions">
+                      <button
+                        className="btn-primary"
+                        type="button"
+                        onClick={handlePaymentConfirm}
+                        disabled={paymentBusy}
+                      >
+                        {paymentBusy ? 'Registrando…' : 'Confirmar'}
+                      </button>
+                      <button
+                        className="btn-outline"
+                        type="button"
+                        onClick={() => setPaymentStep('input')}
+                        disabled={paymentBusy}
+                      >
+                        Volver
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </Dialog>
+
+              {/* Diálogo: Cambiar origen de ingresos (AC #3) */}
+              <Dialog
+                isOpen={incomeSourceOpen}
+                onClose={() => setIncomeSourceOpen(false)}
+                title="Cambiar origen de ingresos"
+                busy={incomeSourceBusy}
+              >
+                {incomeSourceError && (
+                  <p className="form-error" role="alert">
+                    {incomeSourceError}
+                  </p>
+                )}
+                <form onSubmit={handleIncomeSourceSubmit}>
+                  <div className="field">
+                    <label className="field-label" htmlFor="select-income-source">
+                      Origen de ingresos
+                    </label>
+                    <select
+                      id="select-income-source"
+                      className="field-input"
+                      value={selectedIncomeSource}
+                      onChange={(e) => setSelectedIncomeSource(e.target.value as AdminIncomeSource)}
+                      disabled={incomeSourceBusy}
+                    >
+                      <option value="DIAN">Facturador DIAN</option>
+                      <option value="MANUAL_SALES">Ventas manuales</option>
+                    </select>
+                  </div>
+
+                  <div className="stack admin-dialog-actions">
+                    <button className="btn-primary" type="submit" disabled={incomeSourceBusy}>
+                      {incomeSourceBusy ? 'Guardando…' : 'Guardar'}
+                    </button>
+                    <button
+                      className="btn-outline"
+                      type="button"
+                      onClick={() => setIncomeSourceOpen(false)}
+                      disabled={incomeSourceBusy}
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </form>
+              </Dialog>
+
+              {/* Diálogo: Editar perfil tributario (AC #3) */}
+              <Dialog
+                isOpen={taxProfileOpen}
+                onClose={() => setTaxProfileOpen(false)}
+                title="Editar perfil tributario"
+                busy={taxProfileBusy}
+              >
+                {taxProfileError && (
+                  <p className="form-error" role="alert">
+                    {taxProfileError}
+                  </p>
+                )}
+                <form onSubmit={handleTaxProfileSubmit}>
+                  <div className="field">
+                    <label className="field-label" htmlFor="select-iva-periodicity">
+                      Periodicidad de IVA
+                    </label>
+                    <select
+                      id="select-iva-periodicity"
+                      className="field-input"
+                      value={ivaPeriodicity}
+                      onChange={(e) => setIvaPeriodicity(e.target.value)}
+                      disabled={taxProfileBusy}
+                    >
+                      <option value="BIMESTRAL">Bimestral</option>
+                      <option value="CUATRIMESTRAL">Cuatrimestral</option>
+                      <option value="">No responsable</option>
+                    </select>
+                  </div>
+
+                  <div className="field">
+                    <label className="admin-checkbox-container" htmlFor="check-withholding">
+                      <input
+                        id="check-withholding"
+                        type="checkbox"
+                        checked={isWithholding}
+                        onChange={(e) => setIsWithholding(e.target.checked)}
+                        disabled={taxProfileBusy}
+                      />
+                      <span>Agente de retención en la fuente</span>
+                    </label>
+                  </div>
+
+                  <div className="stack admin-dialog-actions">
+                    <button className="btn-primary" type="submit" disabled={taxProfileBusy}>
+                      {taxProfileBusy ? 'Guardando…' : 'Guardar'}
+                    </button>
+                    <button
+                      className="btn-outline"
+                      type="button"
+                      onClick={() => setTaxProfileOpen(false)}
+                      disabled={taxProfileBusy}
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </form>
+              </Dialog>
+
+              {/* Diálogo: Enlace de activación de Telegram generado (AC #4) */}
+              <Dialog
+                isOpen={activationModalOpen}
+                onClose={() => setActivationModalOpen(false)}
+                title="Enlace de activación de Telegram"
+                busy={false}
+              >
+                <div className="admin-activation-dialog-body">
+                  <p className="lead">
+                    Comparte este enlace con el cliente para que vincule su cuenta de Telegram con Kontable.
+                  </p>
+
+                  <div className="field">
+                    <label className="field-label" htmlFor="dialog-activation-link">
+                      Enlace:
+                    </label>
+                    <div className="admin-copy-row">
+                      <input
+                        id="dialog-activation-link"
+                        className="field-input admin-activation-input"
+                        type="text"
+                        readOnly
+                        value={activationLink}
+                      />
+                      <button
+                        type="button"
+                        className="btn-outline admin-btn-copy"
+                        onClick={handleCopyActivationLink}
+                      >
+                        {copiedLink ? '¡Copiado!' : 'Copiar'}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="stack admin-dialog-actions">
+                    <a
+                      href={clientWhatsappUrl(
+                        contact.phone || '',
+                        `¡Hola ${contact.full_name}! Usa este enlace para activar tu bot de Telegram en Kontable: ${activationLink}`,
+                      )}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn-primary admin-btn-wa"
+                    >
+                      Enviar por WhatsApp
+                    </a>
+                    <button
+                      type="button"
+                      className="btn-outline"
+                      onClick={() => setActivationModalOpen(false)}
+                    >
+                      Cerrar
+                    </button>
+                  </div>
+                </div>
+              </Dialog>
+
+              {/* Diálogo: Confirmar desvincular Telegram (AC #4) */}
+              <Dialog
+                isOpen={unlinkConfirmOpen}
+                onClose={() => setUnlinkConfirmOpen(false)}
+                title="Desvincular Telegram"
+                busy={unlinkBusy}
+              >
+                {unlinkError && (
+                  <p className="form-error" role="alert">
+                    {unlinkError}
+                  </p>
+                )}
+                <div className="admin-unlink-box">
+                  <p className="admin-confirm-text">
+                    ¿Estás seguro de que deseas desvincular la cuenta de Telegram de{' '}
+                    <strong>{contact.full_name}</strong>?
+                  </p>
+                  <p className="admin-warning-note">
+                    Consecuencia: El cliente dejará de recibir alertas de vencimiento, notificaciones de facturación
+                    y resúmenes automáticos hasta que vuelva a generar un enlace de activación.
+                  </p>
+
+                  <div className="stack admin-dialog-actions">
+                    <button
+                      className="btn-primary admin-btn-danger"
+                      type="button"
+                      onClick={handleUnlinkTelegram}
+                      disabled={unlinkBusy}
+                    >
+                      {unlinkBusy ? 'Desvinculando…' : 'Desvincular'}
+                    </button>
+                    <button
+                      className="btn-outline"
+                      type="button"
+                      onClick={() => setUnlinkConfirmOpen(false)}
+                      disabled={unlinkBusy}
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </div>
+              </Dialog>
             </div>
           );
         }}

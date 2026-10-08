@@ -910,3 +910,250 @@
   background: var(--beige);
   color: var(--gris-oscuro);
 }
+
+/* ==========================================================================
+   Story 8.6: Estilos de acciones admin (Nuevo cliente, Diálogos y Telegram)
+   ========================================================================== */
+
+.admin-btn-nuevo {
+  width: auto;
+  padding: 8px 18px;
+  font-size: 13px;
+  border-radius: 999px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.admin-btn-action {
+  width: auto;
+  padding: 6px 14px;
+  font-size: 12.5px;
+  border-radius: 999px;
+}
+
+.admin-btn-sm {
+  width: auto;
+  padding: 5px 12px;
+  font-size: 12px;
+  border-radius: 999px;
+}
+
+.admin-btn-inline-action {
+  font-size: 12px;
+  padding: 2px 6px;
+  color: var(--terracota-dark);
+}
+
+.admin-meta-with-action {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin-tg-val-box {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-end;
+}
+
+.admin-tg-status-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.admin-tg-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.admin-btn-danger {
+  color: var(--terracota-dark);
+  border-color: var(--terracota-dark);
+}
+
+.admin-btn-danger:hover {
+  background: #fde8e4;
+}
+
+/* Selector tipo contribuyente (Persona Natural / Empresa) */
+.admin-toggle-group {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+
+.admin-toggle-btn {
+  flex: 1;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1.5px solid var(--beige);
+  background: var(--blanco);
+  color: var(--gris-oscuro);
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.admin-toggle-btn.active {
+  background: var(--verde);
+  color: var(--beige);
+  border-color: var(--verde);
+  font-weight: 700;
+}
+
+.admin-toggle-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Copia de enlaces */
+.admin-copy-row {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.admin-activation-input {
+  flex: 1;
+  font-family: monospace;
+  font-size: 13px;
+  background: var(--gris-claro);
+  border-color: var(--beige);
+}
+
+.admin-btn-copy {
+  width: auto;
+  padding: 0 16px;
+  white-space: nowrap;
+  font-size: 13px;
+}
+
+.admin-btn-wa {
+  background: #25d366 !important;
+  color: #ffffff !important;
+  border-color: #25d366 !important;
+  text-decoration: none;
+}
+
+.admin-btn-wa:hover {
+  opacity: 0.9;
+}
+
+/* Pantalla de éxito */
+.admin-success-card {
+  text-align: center;
+  padding: 32px 20px;
+  max-width: 520px;
+  margin: 0 auto;
+}
+
+.admin-success-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: #e8f5e9;
+  color: var(--verde-tint);
+  font-size: 26px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+
+.admin-success-title {
+  font-size: 24px;
+  margin-bottom: 8px;
+}
+
+.admin-activation-box {
+  margin: 20px 0;
+  text-align: left;
+  background: var(--gris-claro);
+  padding: 16px;
+  border-radius: 14px;
+}
+
+.admin-success-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 360px;
+  margin: 24px auto 0;
+}
+
+/* Formulario Nuevo Cliente */
+.admin-form-card {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 24px 20px;
+}
+
+.admin-form-header {
+  margin-bottom: 20px;
+}
+
+.admin-form-actions {
+  margin-top: 24px;
+}
+
+/* Confirmaciones y notas en diálogos */
+.admin-confirm-box {
+  margin: 8px 0;
+}
+
+.admin-confirm-text {
+  font-size: 15px;
+  color: var(--verde);
+  line-height: 1.5;
+  margin-bottom: 8px;
+}
+
+.admin-warning-note {
+  font-size: 12.5px;
+  color: var(--terracota-dark);
+  background: #fde8e4;
+  padding: 12px 14px;
+  border-radius: 12px;
+  line-height: 1.45;
+  margin: 12px 0 16px;
+}
+
+.admin-checkbox-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--verde);
+  padding: 6px 0;
+}
+
+.admin-checkbox-container input[type='checkbox'] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--terracota);
+  cursor: pointer;
+}
+
+.admin-dialog-actions {
+  margin-top: 20px;
+}
+
+/* Diálogo en escritorio */
+@media (min-width: 640px) {
+  .modal-backdrop {
+    align-items: center;
+  }
+
+  .modal {
+    border-radius: 24px;
+    max-height: 90vh;
+  }
+}
+

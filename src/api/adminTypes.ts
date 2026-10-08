@@ -174,3 +174,67 @@ export interface AdminClientsQuery {
   page?: number;
   page_size?: number;
 }
+
+// ==============================================================================
+// Story 8.6: Tipos de acciones (Alta de cliente, pagos y configuración)
+// ==============================================================================
+
+export type AdminPersonType = 'PERSONA' | 'EMPRESA';
+export type AdminPlan = 'TRIMESTRAL' | 'SEMESTRAL' | 'ANUAL';
+export type AdminIncomeSource = 'DIAN' | 'MANUAL_SALES';
+
+export interface AdminClientCreateRequest {
+  person_type: 'PERSONA' | 'EMPRESA';
+  contact_name: string;
+  phone: string;
+  document_number?: string | null;
+  company_name?: string | null;
+  nit?: string | null;
+  legal_rep_doc?: string | null;
+  plan: 'TRIMESTRAL' | 'SEMESTRAL' | 'ANUAL' | string;
+  income_source?: 'DIAN' | 'MANUAL_SALES' | string | null;
+}
+
+export interface AdminClientCreateResponse {
+  business_id: string;
+  user_id: string;
+  activation_link: string;
+}
+
+export interface AdminPaymentCreateRequest {
+  amount: number | string;
+  reference: string;
+}
+
+export interface AdminPaymentItem {
+  id: string;
+  amount: string;
+  payment_date: string;
+  reference_code?: string | null;
+  verified_by_admin_id?: string | null;
+  created_at?: string | null;
+}
+
+export interface AdminPaymentResponse {
+  payment: AdminPaymentItem;
+  new_cutoff_date: string;
+  status: string;
+  client_notified: boolean;
+  payment_id?: string | null;
+  amount?: string | null;
+  reference?: string | null;
+}
+
+export interface AdminIncomeSourceRequest {
+  income_source: 'DIAN' | 'MANUAL_SALES' | string;
+}
+
+export interface AdminTaxProfileRequest {
+  iva_periodicity?: 'BIMESTRAL' | 'CUATRIMESTRAL' | null;
+  is_withholding_agent: boolean;
+}
+
+export interface AdminActivationLinkResponse {
+  activation_link: string;
+}
+

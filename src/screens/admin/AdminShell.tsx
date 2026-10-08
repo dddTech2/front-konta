@@ -3,10 +3,11 @@ import { useAuth } from '../../auth/AuthContext';
 import { BRAND_NAME } from '../../brand';
 import AdminClientes from './AdminClientes';
 import AdminFicha from './AdminFicha';
+import AdminNuevoCliente from './AdminNuevoCliente';
 import AdminOperacion from './AdminOperacion';
 import AdminResumen from './AdminResumen';
 
-export { AdminClientes, AdminFicha, AdminOperacion, AdminResumen };
+export { AdminClientes, AdminFicha, AdminNuevoCliente, AdminOperacion, AdminResumen };
 
 export default function AdminShell() {
   const { logout } = useAuth();
@@ -44,6 +45,7 @@ export default function AdminShell() {
           <Routes>
             <Route index element={<AdminResumen />} />
             <Route path="clientes" element={<AdminClientes />} />
+            <Route path="clientes/nuevo" element={<AdminNuevoCliente />} />
             <Route path="clientes/:businessId" element={<AdminFicha />} />
             <Route path="operacion" element={<AdminOperacion />} />
             <Route path="*" element={<Navigate to="/admin" replace />} />

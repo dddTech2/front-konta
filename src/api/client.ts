@@ -130,7 +130,7 @@ function genericMessage(status: number): string {
 }
 
 export interface RequestOptions {
-  method?: 'GET' | 'POST';
+  method?: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
   body?: unknown;
   /** false = llamada pública (login): sin Bearer y sin manejo global de 401/403. */
   auth?: boolean;

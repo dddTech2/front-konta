@@ -135,6 +135,9 @@ export default function AdminClientes() {
     <section aria-label="Clientes" className="screen admin-screen">
       <div className="admin-screen-head">
         <h1 className="screen-title">Clientes</h1>
+        <Link to="/admin/clientes/nuevo" className="btn-primary admin-btn-nuevo">
+          Nuevo cliente
+        </Link>
       </div>
 
       {/* Buscador con icono */}
