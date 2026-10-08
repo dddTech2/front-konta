@@ -67,19 +67,28 @@ export function mockApi(routes: Record<string, Route>) {
   const fetchMock = vi.fn(async (input: RequestInfo | URL, init: RequestInit = {}) => {
     const method = (init.method ?? 'GET').toUpperCase();
     const path = String(input);
+    let parsedBody: unknown = init.body;
+    if (typeof init.body === 'string') {
+      try {
+        parsedBody = JSON.parse(init.body);
+      } catch {
+        parsedBody = init.body;
+      }
+    }
     calls.push({
       method,
       path,
       headers: (init.headers ?? {}) as Record<string, string>,
-      body: typeof init.body === 'string' ? JSON.parse(init.body) : undefined,
+      body: parsedBody,
     });
     const route = table[`${method} ${path}`] ?? table[`${method} ${path.split('?')[0]}`];
     if (!route) throw new Error(`Ruta no simulada: ${method} ${path}`);
     const reply = await (typeof route === 'function' ? route(init, path) : route);
     if (reply.networkError) throw new TypeError('Failed to fetch');
-    return new Response(reply.body === undefined ? null : JSON.stringify(reply.body), {
+    const hasJsonBody = reply.body !== undefined;
+    return new Response(hasJsonBody ? JSON.stringify(reply.body) : null, {
       status: reply.status ?? 200,
-      headers: { 'Content-Type': 'application/json' },
+      headers: hasJsonBody ? { 'Content-Type': 'application/json' } : {},
     });
   });
   vi.stubGlobal('fetch', fetchMock);

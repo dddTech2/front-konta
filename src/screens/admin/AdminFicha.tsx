@@ -1,26 +1,40 @@
 import { useRef, useState, type FormEvent } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
 import {
+  deleteAdminDocument,
   generateAdminActivationLink,
   getAdminClientDetail,
+  getAdminDocumentLink,
+  getAdminDocuments,
   recordAdminPayment,
   releaseAdminTelegram,
+  triggerAdminExtraction,
   updateAdminIncomeSource,
   updateAdminTaxProfile,
+  uploadAdminDocument,
 } from '../../api/adminEndpoints';
-import type { AdminIncomeSource } from '../../api/adminTypes';
+import type { AdminDocumentItem, AdminExtractionCreateResponse, AdminIncomeSource } from '../../api/adminTypes';
 import { ApiError, NETWORK_ERROR_MESSAGE } from '../../api/client';
 import Dialog from '../../components/Dialog';
 import { ResourceView } from '../../components/ScreenState';
 import { clientWhatsappUrl } from '../../config';
 import {
+  DOCUMENT_TYPE_OPTIONS,
+  docTitle,
+  isAllowedDocumentType,
+  MAX_DOCUMENT_SIZE_BYTES,
+  openDocumentLink,
+} from '../../documents';
+import {
   fmtBogotaDate,
   fmtDeadline,
+  fmtFileSize,
   fmtMoney,
   fmtNit,
   fmtPercent,
   fmtPeriod,
   jobStatus,
+  recentMonths,
 } from '../../format';
 import { useResource } from '../../hooks/useResource';
 
@@ -126,6 +140,44 @@ export default function AdminFicha() {
   const [unlinkBusy, setUnlinkBusy] = useState(false);
   const [unlinkError, setUnlinkError] = useState<string | null>(null);
   const unlinkSubmitting = useRef(false);
+
+  // ---------- Estado: Descargar de la DIAN (Story 8.7 AC #2) ----------
+  const [extractionOpen, setExtractionOpen] = useState(false);
+  const [extractionMode, setExtractionMode] = useState<'single' | 'range'>('single');
+  const [extractionMonth, setExtractionMonth] = useState(recentMonths(1)[0] || '');
+  const [extractionMonthsCount, setExtractionMonthsCount] = useState('3');
+  const [extractionStep, setExtractionStep] = useState<'input' | 'confirm' | 'result'>('input');
+  const [extractionBusy, setExtractionBusy] = useState(false);
+  const [extractionError, setExtractionError] = useState<string | null>(null);
+  const [extractionResult, setExtractionResult] = useState<AdminExtractionCreateResponse | null>(null);
+  const extractionSubmitting = useRef(false);
+
+  // ---------- Estado: Documentos (Story 8.7 AC #1) ----------
+  const { state: docsState, retry: retryDocs } = useResource(
+    () => getAdminDocuments(businessId),
+    [businessId],
+  );
+
+  // Subida de documentos
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadDocType, setUploadDocType] = useState('RUT');
+  const [uploadDescription, setUploadDescription] = useState('');
+  const [uploadBusy, setUploadBusy] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const uploadSubmitting = useRef(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Retirar documento
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [docToDelete, setDocToDelete] = useState<AdminDocumentItem | null>(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const deleteSubmitting = useRef(false);
+
+  // Abrir documento
+  const [openingDocId, setOpeningDocId] = useState<string | null>(null);
+  const [docActionError, setDocActionError] = useState<string | null>(null);
 
   // Handler: Confirmar / Registrar pago
   function handlePaymentContinue(e: FormEvent) {
@@ -303,6 +355,222 @@ export default function AdminFicha() {
       setTimeout(() => setCopiedLink(false), 2500);
     } catch {
       setCopiedLink(false);
+    }
+  }
+
+  // ---------- Handlers: Descargar de la DIAN (Story 8.7 AC #2) ----------
+  function handleOpenExtraction() {
+    setExtractionMode('single');
+    setExtractionMonth(recentMonths(1)[0] || '');
+    setExtractionMonthsCount('3');
+    setExtractionStep('input');
+    setExtractionError(null);
+    setExtractionResult(null);
+    setExtractionOpen(true);
+  }
+
+  function handleExtractionContinue(e: FormEvent) {
+    e.preventDefault();
+    setExtractionError(null);
+    if (extractionMode === 'range') {
+      const num = Number(extractionMonthsCount);
+      if (!/^\d{1,2}$/.test(extractionMonthsCount.trim()) || num < 1 || num > 12) {
+        setExtractionError('El número de meses debe estar entre 1 y 12.');
+        return;
+      }
+    } else if (!extractionMonth) {
+      setExtractionError('Selecciona un mes para la descarga.');
+      return;
+    }
+    setExtractionStep('confirm');
+  }
+
+  async function handleExtractionConfirm() {
+    if (extractionSubmitting.current) return;
+    extractionSubmitting.current = true;
+    setExtractionBusy(true);
+    setExtractionError(null);
+
+    const payload =
+      extractionMode === 'single'
+        ? { period: extractionMonth }
+        : { months: Number(extractionMonthsCount) };
+
+    try {
+      const res = await triggerAdminExtraction(businessId, payload);
+      setExtractionResult(res);
+      setExtractionStep('result');
+      retry();
+    } catch (err) {
+      if (err instanceof ApiError) {
+        if (err.kind !== 'unauthorized' && err.kind !== 'forbidden') {
+          setExtractionError(err.message);
+        }
+      } else {
+        setExtractionError(NETWORK_ERROR_MESSAGE);
+      }
+    } finally {
+      extractionSubmitting.current = false;
+      setExtractionBusy(false);
+    }
+  }
+
+  // ---------- Handlers: Subida de documentos (Story 8.7 AC #1) ----------
+  function handleSelectedFile(file: File) {
+    setUploadError(null);
+    if (!isAllowedDocumentType(file)) {
+      setUploadError('Tipo de archivo no permitido. Solo se aceptan archivos PDF, JPEG o PNG.');
+      return;
+    }
+    if (file.size > MAX_DOCUMENT_SIZE_BYTES) {
+      setUploadError('El archivo supera el tamaño máximo permitido de 10 MB.');
+      return;
+    }
+    setUploadFile(file);
+  }
+
+  function handleFileInputChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) handleSelectedFile(file);
+  }
+
+  function handleDragOver(e: React.DragEvent) {
+    e.preventDefault();
+    setIsDragging(true);
+  }
+
+  function handleDragLeave(e: React.DragEvent) {
+    e.preventDefault();
+    setIsDragging(false);
+  }
+
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) handleSelectedFile(file);
+  }
+
+  function handleClearSelectedFile() {
+    setUploadFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }
+
+  async function handleUploadSubmit() {
+    setUploadError(null);
+    if (!uploadFile) {
+      setUploadError('Selecciona un archivo para subir.');
+      return;
+    }
+    if (!isAllowedDocumentType(uploadFile)) {
+      setUploadError('Tipo de archivo no permitido. Solo se aceptan archivos PDF, JPEG o PNG.');
+      return;
+    }
+    if (uploadFile.size > MAX_DOCUMENT_SIZE_BYTES) {
+      setUploadError('El archivo supera el tamaño máximo permitido de 10 MB.');
+      return;
+    }
+    if (uploadDocType === 'OTRO' && !uploadDescription.trim()) {
+      setUploadError('La descripción es obligatoria cuando el tipo de documento es "Otro".');
+      return;
+    }
+
+    if (uploadSubmitting.current) return;
+    uploadSubmitting.current = true;
+    setUploadBusy(true);
+
+    const fd = new FormData();
+    fd.append('file', uploadFile);
+    fd.append('doc_type', uploadDocType);
+    if (uploadDescription.trim()) {
+      fd.append('description', uploadDescription.trim());
+    }
+
+    try {
+      await uploadAdminDocument(businessId, fd);
+      setUploadFile(null);
+      setUploadDescription('');
+      setUploadDocType('RUT');
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      retryDocs();
+      retry();
+    } catch (err) {
+      if (err instanceof ApiError) {
+        if (err.kind !== 'unauthorized' && err.kind !== 'forbidden') {
+          if (err.status === 413) {
+            setUploadError('El archivo es demasiado grande (máximo 10 MB).');
+          } else if (err.status === 415) {
+            setUploadError('Tipo de archivo no permitido por el servidor.');
+          } else if (err.status === 422) {
+            setUploadError(err.message || 'Los datos del documento no son válidos.');
+          } else {
+            setUploadError(err.message);
+          }
+        }
+      } else {
+        setUploadError(NETWORK_ERROR_MESSAGE);
+      }
+    } finally {
+      uploadSubmitting.current = false;
+      setUploadBusy(false);
+    }
+  }
+
+  // ---------- Handlers: Abrir y Retirar Documentos (Story 8.7 AC #1) ----------
+  async function handleOpenDoc(doc: AdminDocumentItem) {
+    if (openingDocId !== null) return;
+    setOpeningDocId(doc.id);
+    setDocActionError(null);
+
+    try {
+      await openDocumentLink(() => getAdminDocumentLink(businessId, doc.id));
+    } catch (err) {
+      if (err instanceof ApiError) {
+        if (err.kind !== 'unauthorized' && err.kind !== 'forbidden') {
+          if (err.status === 404) {
+            setDocActionError('Este documento ya no está disponible.');
+            retryDocs();
+            retry();
+          } else {
+            setDocActionError(err.message);
+          }
+        }
+      } else {
+        setDocActionError(NETWORK_ERROR_MESSAGE);
+      }
+    } finally {
+      setOpeningDocId(null);
+    }
+  }
+
+  async function handleConfirmDelete() {
+    if (!docToDelete) return;
+    if (deleteSubmitting.current) return;
+    deleteSubmitting.current = true;
+    setDeleteBusy(true);
+    setDeleteError(null);
+
+    try {
+      await deleteAdminDocument(businessId, docToDelete.id);
+      setDeleteOpen(false);
+      setDocToDelete(null);
+      retryDocs();
+      retry();
+    } catch (err) {
+      if (err instanceof ApiError) {
+        if (err.kind !== 'unauthorized' && err.kind !== 'forbidden') {
+          if (err.status === 409) {
+            setDeleteError('El documento ya ha sido retirado previamente.');
+          } else {
+            setDeleteError(err.message);
+          }
+        }
+      } else {
+        setDeleteError(NETWORK_ERROR_MESSAGE);
+      }
+    } finally {
+      deleteSubmitting.current = false;
+      setDeleteBusy(false);
     }
   }
 
@@ -621,7 +889,16 @@ export default function AdminFicha() {
 
               {/* Descargas DIAN recientes */}
               <div className="card admin-card">
-                <h2 className="admin-section-title">Descargas DIAN recientes</h2>
+                <div className="admin-card-head">
+                  <h2 className="admin-section-title">Descargas DIAN recientes</h2>
+                  <button
+                    type="button"
+                    className="btn-primary admin-btn-action"
+                    onClick={handleOpenExtraction}
+                  >
+                    Descargar de la DIAN
+                  </button>
+                </div>
                 {recent_extractions.length === 0 ? (
                   <p className="admin-empty-text">No hay descargas DIAN registradas.</p>
                 ) : (
@@ -668,17 +945,239 @@ export default function AdminFicha() {
               <div className="card admin-card">
                 <div className="admin-card-head">
                   <h2 className="admin-section-title">Documentos</h2>
-                  <span className="admin-count-badge">{ficha.active_documents_count}</span>
+                  <span className="admin-count-badge">
+                    {docsState.status === 'ready' ? docsState.data.length : ficha.active_documents_count}
+                  </span>
                 </div>
-                <div className="admin-docs-summary">
-                  <p>
-                    El cliente cuenta con <strong>{ficha.active_documents_count}</strong>{' '}
-                    {ficha.active_documents_count === 1 ? 'documento activo' : 'documentos activos'} en su expediente.
+
+                {docActionError && (
+                  <p className="form-error" role="alert">
+                    {docActionError}
                   </p>
-                  <p className="admin-muted-text">
-                    La visualización y gestión de documentos desde este panel estará disponible próximamente.
-                  </p>
-                </div>
+                )}
+
+                <ResourceView state={docsState} onRetry={retryDocs} loadingLabel="Cargando documentos del cliente…">
+                  {(docs) => (
+                    <>
+                      {docs.length === 0 ? (
+                        <p className="admin-empty-text">No hay documentos registrados para este cliente.</p>
+                      ) : (
+                        <>
+                          {/* Vista de tabla para escritorio (>= 1024 px) */}
+                          <div className="admin-table-container admin-desktop-only">
+                            <table className="admin-table" aria-label="Documentos del cliente">
+                              <thead>
+                                <tr>
+                                  <th scope="col">#</th>
+                                  <th scope="col">Tipo</th>
+                                  <th scope="col">Descripción</th>
+                                  <th scope="col">Fecha</th>
+                                  <th scope="col">Tamaño</th>
+                                  <th scope="col">Acciones</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {docs.map((doc) => (
+                                  <tr key={doc.id} className="admin-table-row">
+                                    <td>
+                                      <span className="admin-doc-num">#{doc.number}</span>
+                                    </td>
+                                    <td>
+                                      <strong>{docTitle(doc)}</strong>
+                                      <span className="admin-doc-filename" style={{ display: 'block' }}>
+                                        {doc.original_filename}
+                                      </span>
+                                    </td>
+                                    <td>{doc.description || '—'}</td>
+                                    <td>{fmtBogotaDate(doc.created_at)}</td>
+                                    <td>{fmtFileSize(doc.size_bytes)}</td>
+                                    <td>
+                                      <div className="admin-doc-actions">
+                                        <button
+                                          type="button"
+                                          className="btn-outline admin-btn-sm"
+                                          aria-label={`Abrir ${docTitle(doc)}`}
+                                          disabled={openingDocId !== null}
+                                          onClick={() => handleOpenDoc(doc)}
+                                        >
+                                          {openingDocId === doc.id ? 'Abriendo…' : 'Abrir'}
+                                        </button>
+                                        <button
+                                          type="button"
+                                          className="btn-outline admin-btn-sm admin-btn-danger"
+                                          aria-label={`Retirar ${docTitle(doc)}`}
+                                          onClick={() => {
+                                            setDocToDelete(doc);
+                                            setDeleteError(null);
+                                            setDeleteOpen(true);
+                                          }}
+                                        >
+                                          Retirar
+                                        </button>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+
+                          {/* Vista de tarjetas apiladas para móvil (< 1024 px) */}
+                          <div className="admin-mobile-only" style={{ gap: '10px' }}>
+                            {docs.map((doc) => (
+                              <div key={doc.id} className="card admin-doc-card">
+                                <div className="admin-doc-card-top">
+                                  <div>
+                                    <span className="admin-doc-num">#{doc.number}</span>{' '}
+                                    <strong>{docTitle(doc)}</strong>
+                                    <div className="admin-doc-filename">{doc.original_filename}</div>
+                                  </div>
+                                  <div className="admin-doc-actions">
+                                    <button
+                                      type="button"
+                                      className="btn-outline admin-btn-sm"
+                                      aria-label={`Abrir ${docTitle(doc)}`}
+                                      disabled={openingDocId !== null}
+                                      onClick={() => handleOpenDoc(doc)}
+                                    >
+                                      {openingDocId === doc.id ? 'Abriendo…' : 'Abrir'}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="btn-outline admin-btn-sm admin-btn-danger"
+                                      aria-label={`Retirar ${docTitle(doc)}`}
+                                      onClick={() => {
+                                        setDocToDelete(doc);
+                                        setDeleteError(null);
+                                        setDeleteOpen(true);
+                                      }}
+                                    >
+                                      Retirar
+                                    </button>
+                                  </div>
+                                </div>
+                                {doc.description && <p className="admin-muted-text">{doc.description}</p>}
+                                <div className="admin-doc-card-meta">
+                                  <span>{fmtBogotaDate(doc.created_at)}</span>
+                                  <span>·</span>
+                                  <span>{fmtFileSize(doc.size_bytes)}</span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </>
+                      )}
+
+                      {/* Zona de subida */}
+                      <div className="admin-upload-section">
+                        <h3 className="admin-section-subtitle">Subir nuevo documento</h3>
+
+                        {uploadError && (
+                          <p className="form-error" role="alert" style={{ marginBottom: '12px' }}>
+                            {uploadError}
+                          </p>
+                        )}
+
+                        <div
+                          className={`admin-dropzone ${isDragging ? 'dragging' : ''}`}
+                          onDragOver={handleDragOver}
+                          onDragLeave={handleDragLeave}
+                          onDrop={handleDrop}
+                        >
+                          <span className="admin-dropzone-icon" aria-hidden="true">
+                            📄
+                          </span>
+                          <p className="admin-dropzone-text">
+                            Arrastra y suelta un archivo aquí o haz clic en Elegir archivo
+                          </p>
+                          <input
+                            id="admin-doc-file"
+                            ref={fileInputRef}
+                            type="file"
+                            accept="application/pdf,image/jpeg,image/png"
+                            onChange={handleFileInputChange}
+                            className="admin-file-input-hidden"
+                          />
+                          <label
+                            htmlFor="admin-doc-file"
+                            className="btn-outline admin-btn-sm"
+                            style={{ cursor: 'pointer' }}
+                          >
+                            Elegir archivo
+                          </label>
+                          <p className="admin-dropzone-hint">
+                            Formatos aceptados: PDF, JPEG o PNG (hasta 10 MB)
+                          </p>
+
+                          {uploadFile && (
+                            <div className="admin-selected-file-badge">
+                              <span>
+                                📎 {uploadFile.name} ({fmtFileSize(uploadFile.size)})
+                              </span>
+                              <button
+                                type="button"
+                                className="btn-link"
+                                style={{ color: 'var(--terracota-dark)', marginLeft: '6px' }}
+                                onClick={handleClearSelectedFile}
+                              >
+                                Quitar
+                              </button>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="admin-grid admin-grid-2" style={{ marginBottom: '14px' }}>
+                          <div className="field">
+                            <label className="field-label" htmlFor="upload-doc-type">
+                              Tipo de documento
+                            </label>
+                            <select
+                              id="upload-doc-type"
+                              className="field-input"
+                              value={uploadDocType}
+                              onChange={(e) => setUploadDocType(e.target.value)}
+                              disabled={uploadBusy}
+                            >
+                              {DOCUMENT_TYPE_OPTIONS.map((opt) => (
+                                <option key={opt.value} value={opt.value}>
+                                  {opt.label}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div className="field">
+                            <label className="field-label" htmlFor="upload-doc-desc">
+                              Descripción {uploadDocType === 'OTRO' ? '(obligatoria)' : '(opcional)'}
+                            </label>
+                            <input
+                              id="upload-doc-desc"
+                              className="field-input"
+                              type="text"
+                              placeholder={
+                                uploadDocType === 'OTRO'
+                                  ? 'Escribe qué documento es…'
+                                  : 'Detalle o referencia opcional'
+                              }
+                              value={uploadDescription}
+                              onChange={(e) => setUploadDescription(e.target.value)}
+                              disabled={uploadBusy}
+                            />
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          className="btn-primary"
+                          onClick={handleUploadSubmit}
+                          disabled={uploadBusy}
+                        >
+                          {uploadBusy ? 'Subiendo…' : 'Subir documento'}
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </ResourceView>
               </div>
 
               {/* ================================================================
@@ -983,6 +1482,206 @@ export default function AdminFicha() {
                     </button>
                   </div>
                 </div>
+              </Dialog>
+
+              {/* Diálogo: Descargar de la DIAN (Story 8.7 AC #2) */}
+              <Dialog
+                isOpen={extractionOpen}
+                onClose={() => setExtractionOpen(false)}
+                title={
+                  extractionStep === 'result'
+                    ? 'Descarga encolada exitosamente'
+                    : extractionStep === 'confirm'
+                      ? 'Confirmar descarga de la DIAN'
+                      : 'Descargar de la DIAN'
+                }
+                busy={extractionBusy}
+              >
+                {extractionError && (
+                  <p className="form-error" role="alert">
+                    {extractionError}
+                  </p>
+                )}
+
+                {extractionStep === 'input' && (
+                  <form onSubmit={handleExtractionContinue} noValidate>
+                    <div className="field">
+                      <label className="field-label">Modalidad de descarga</label>
+                      <div className="admin-toggle-group" role="radiogroup" aria-label="Modalidad de descarga">
+                        <button
+                          type="button"
+                          role="radio"
+                          aria-checked={extractionMode === 'single'}
+                          className={`admin-toggle-btn ${extractionMode === 'single' ? 'active' : ''}`}
+                          onClick={() => setExtractionMode('single')}
+                        >
+                          Un mes
+                        </button>
+                        <button
+                          type="button"
+                          role="radio"
+                          aria-checked={extractionMode === 'range'}
+                          className={`admin-toggle-btn ${extractionMode === 'range' ? 'active' : ''}`}
+                          onClick={() => setExtractionMode('range')}
+                        >
+                          Últimos N meses
+                        </button>
+                      </div>
+                    </div>
+
+                    {extractionMode === 'single' ? (
+                      <div className="field">
+                        <label className="field-label" htmlFor="select-extraction-month">
+                          Mes a descargar
+                        </label>
+                        <select
+                          id="select-extraction-month"
+                          className="field-input"
+                          value={extractionMonth}
+                          onChange={(e) => setExtractionMonth(e.target.value)}
+                          disabled={extractionBusy}
+                        >
+                          {recentMonths(12).map((m) => (
+                            <option key={m} value={m}>
+                              {fmtPeriod(m)}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    ) : (
+                      <div className="field">
+                        <label className="field-label" htmlFor="input-extraction-months">
+                          Cantidad de meses (1–12)
+                        </label>
+                        <input
+                          id="input-extraction-months"
+                          className="field-input"
+                          type="number"
+                          min={1}
+                          max={12}
+                          value={extractionMonthsCount}
+                          inputMode="numeric"
+                          onChange={(e) => setExtractionMonthsCount(e.target.value.replace(/\D/g, '').slice(0, 2))}
+                          disabled={extractionBusy}
+                        />
+                      </div>
+                    )}
+
+                    <div className="stack admin-dialog-actions">
+                      <button className="btn-primary" type="submit" disabled={extractionBusy}>
+                        Continuar
+                      </button>
+                      <button
+                        className="btn-outline"
+                        type="button"
+                        onClick={() => setExtractionOpen(false)}
+                        disabled={extractionBusy}
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  </form>
+                )}
+
+                {extractionStep === 'confirm' && (
+                  <div className="admin-confirm-box">
+                    <p className="admin-confirm-text">
+                      {extractionMode === 'single'
+                        ? `¿Confirmas solicitar la descarga de la DIAN para ${fmtPeriod(extractionMonth)} de ${business.commercial_name}?`
+                        : `¿Confirmas solicitar la descarga de la DIAN de los últimos ${extractionMonthsCount} meses para ${business.commercial_name}?`}
+                    </p>
+                    <p className="admin-muted-text">
+                      La tarea se encolará y el worker de fondo procesará los documentos directamente con la DIAN.
+                    </p>
+
+                    <div className="stack admin-dialog-actions">
+                      <button
+                        className="btn-primary"
+                        type="button"
+                        onClick={handleExtractionConfirm}
+                        disabled={extractionBusy}
+                      >
+                        {extractionBusy ? 'Encolando…' : 'Confirmar descarga'}
+                      </button>
+                      <button
+                        className="btn-outline"
+                        type="button"
+                        onClick={() => setExtractionStep('input')}
+                        disabled={extractionBusy}
+                      >
+                        Volver
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {extractionStep === 'result' && (
+                  <div className="admin-confirm-box">
+                    <p className="admin-confirm-text">
+                      La solicitud ha sido registrada correctamente en el sistema.
+                    </p>
+                    {extractionResult && (
+                      <div className="admin-stat-row" style={{ marginTop: '12px' }}>
+                        <span>Estado</span>
+                        <strong>{jobStatus(extractionResult.status).label}</strong>
+                      </div>
+                    )}
+
+                    <div className="stack admin-dialog-actions">
+                      <button
+                        className="btn-primary"
+                        type="button"
+                        onClick={() => setExtractionOpen(false)}
+                      >
+                        Aceptar
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </Dialog>
+
+              {/* Diálogo: Retirar documento (Story 8.7 AC #1) */}
+              <Dialog
+                isOpen={deleteOpen}
+                onClose={() => setDeleteOpen(false)}
+                title="Retirar documento"
+                busy={deleteBusy}
+              >
+                {deleteError && (
+                  <p className="form-error" role="alert">
+                    {deleteError}
+                  </p>
+                )}
+                {docToDelete && (
+                  <div className="admin-confirm-box">
+                    <p className="admin-confirm-text">
+                      ¿Estás seguro de que deseas retirar el documento{' '}
+                      <strong>{docTitle(docToDelete)} (#{docToDelete.number})</strong>?
+                    </p>
+                    <p className="admin-warning-note">
+                      El archivo ({docToDelete.original_filename}) dejará de estar disponible para el cliente.
+                    </p>
+
+                    <div className="stack admin-dialog-actions">
+                      <button
+                        className="btn-primary admin-btn-danger"
+                        type="button"
+                        onClick={handleConfirmDelete}
+                        disabled={deleteBusy}
+                      >
+                        {deleteBusy ? 'Retirando…' : 'Retirar'}
+                      </button>
+                      <button
+                        className="btn-outline"
+                        type="button"
+                        onClick={() => setDeleteOpen(false)}
+                        disabled={deleteBusy}
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  </div>
+                )}
               </Dialog>
             </div>
           );

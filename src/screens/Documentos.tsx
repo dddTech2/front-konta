@@ -1,26 +1,12 @@
 import { useRef, useState } from 'react';
-import { ApiError, apiUrl, NETWORK_ERROR_MESSAGE } from '../api/client';
+import { ApiError, NETWORK_ERROR_MESSAGE } from '../api/client';
 import { getDocumentLink, getDocuments } from '../api/endpoints';
-import type { BusinessDocument, DocumentType } from '../api/types';
+import type { BusinessDocument } from '../api/types';
 import { ResourceView } from '../components/ScreenState';
+import { docTitle, openDocumentLink } from '../documents';
 import { fmtBogotaDate, fmtFileSize } from '../format';
 import { useResource } from '../hooks/useResource';
-import { navigateTo } from '../navigation';
 import '../styles/screens.css';
-
-const DOC_TYPE_LABELS: Record<Exclude<DocumentType, 'OTRO'>, string> = {
-  RUT: 'RUT',
-  CAMARA_COMERCIO: 'Cámara de comercio',
-  CEDULA_REPRESENTANTE: 'Cédula del representante',
-  CERTIFICACION_BANCARIA: 'Certificación bancaria',
-};
-
-function docTitle(doc: BusinessDocument): string {
-  if (doc.doc_type === 'OTRO') {
-    return doc.description?.trim() || 'Otro documento';
-  }
-  return DOC_TYPE_LABELS[doc.doc_type] ?? doc.doc_type;
-}
 
 /**
  * Pantalla de documentos del cliente (Story 7.4b).
@@ -44,30 +30,9 @@ export default function Documentos({ businessId }: { businessId: string }) {
     setBusyId(doc.id);
     setRowError(null);
 
-    // Abrir síncronamente una pestaña para evitar el bloqueo de ventanas emergentes tras await
-    let popup: Window | null = null;
     try {
-      popup = window.open('', '_blank');
-    } catch {
-      popup = null;
-    }
-
-    try {
-      const { url } = await getDocumentLink(businessId, doc.id);
-      const destination = apiUrl(url);
-      if (popup) {
-        popup.location.href = destination;
-      } else {
-        navigateTo(destination);
-      }
+      await openDocumentLink(() => getDocumentLink(businessId, doc.id));
     } catch (err) {
-      if (popup) {
-        try {
-          popup.close();
-        } catch {
-          // Ignorar error al cerrar pestaña en navegadores que restringen script close
-        }
-      }
 
       if (err instanceof ApiError) {
         // 401 y 403 los resuelve apiFetch globalmente (login o servicio suspendido)

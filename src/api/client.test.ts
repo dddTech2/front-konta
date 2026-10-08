@@ -121,6 +121,30 @@ describe('apiFetch', () => {
     await expect(apiFetch('/api/x')).rejects.toMatchObject({ kind: 'http', status: 502 });
     expect(h.onUnauthorized).not.toHaveBeenCalled();
   });
+
+  it('FormData: no agrega Content-Type y no serializa con JSON.stringify', async () => {
+    const h = handlers();
+    configureApi(h);
+    const fd = new FormData();
+    fd.append('file', new Blob(['test content']), 'test.pdf');
+    fd.append('doc_type', 'RUT');
+
+    const api = mockApi({ 'POST /api/upload': { status: 201, body: { ok: true } } });
+
+    await expect(apiFetch('/api/upload', { method: 'POST', body: fd })).resolves.toEqual({ ok: true });
+
+    expect(api.calls[0].headers['Content-Type']).toBeUndefined();
+    expect(api.calls[0].headers.Authorization).toBe('Bearer jwt-abc');
+    expect(api.calls[0].body).toBe(fd);
+  });
+
+  it('204: respuesta sin contenido retorna undefined', async () => {
+    const h = handlers();
+    configureApi(h);
+    mockApi({ 'DELETE /api/docs/1': { status: 204 } });
+
+    await expect(apiFetch('/api/docs/1', { method: 'DELETE' })).resolves.toBeUndefined();
+  });
 });
 
 describe('llamadas públicas de login', () => {

@@ -1,5 +1,8 @@
 import type {
   AdminClientsListResponse,
+  AdminDocumentItem,
+  AdminJobsListResponse,
+  AdminWorkerStatusResponse,
   AdminSummaryResponse,
   CalendarResponse,
   ClientDetailResponse,
@@ -404,6 +407,105 @@ export const ADMIN_CLIENT_DETAIL: ClientDetailResponse = {
   has_pending_activation_link: false,
 };
 
+
+export const ADMIN_DOCUMENTS: AdminDocumentItem[] = [
+  {
+    id: 'doc-1',
+    number: 1,
+    doc_type: 'RUT',
+    description: null,
+    original_filename: 'RUT_2026.pdf',
+    content_type: 'application/pdf',
+    size_bytes: 235520, // 230 KB
+    created_at: '2026-10-06T21:57:00',
+  },
+  {
+    id: 'doc-2',
+    number: 2,
+    doc_type: 'CAMARA_COMERCIO',
+    description: null,
+    original_filename: 'camara_comercio.pdf',
+    content_type: 'application/pdf',
+    size_bytes: 1258291, // 1,2 MB
+    created_at: '2026-10-05T14:30:00',
+  },
+  {
+    id: 'doc-3',
+    number: 3,
+    doc_type: 'OTRO',
+    description: 'Contrato de arrendamiento',
+    original_filename: 'contrato.pdf',
+    content_type: 'application/pdf',
+    size_bytes: 999, // 999 B
+    created_at: '2026-10-01T10:00:00',
+  },
+];
+
+export const ADMIN_WORKER_STATUS: AdminWorkerStatusResponse = {
+  silence_threshold_minutes: 15,
+  workers: [
+    {
+      name: 'worker-dian-1',
+      last_seen_at: '2026-10-07T18:15:00',
+      minutes_since: 3,
+      is_silent: false,
+    },
+  ],
+};
+
+export const ADMIN_JOBS: AdminJobsListResponse = {
+  items: [
+    {
+      job_id: 'job-1',
+      business_id: 'biz-1',
+      commercial_name: 'Panadería La Espiga',
+      nit: '900123456',
+      target_period: '2026-08',
+      status: 'SUCCESS',
+      attempt_count: 1,
+      max_attempts: 3,
+      next_run_at: null,
+      started_at: '2026-09-01T04:00:00',
+      finished_at: '2026-09-01T04:15:00',
+      error_code: null,
+      error_message: null,
+    },
+    {
+      job_id: 'job-2',
+      business_id: 'biz-2',
+      commercial_name: 'Cafetería Central',
+      nit: '901234567',
+      target_period: '2026-09',
+      status: 'FAILED',
+      attempt_count: 3,
+      max_attempts: 3,
+      next_run_at: null,
+      started_at: '2026-10-01T04:00:00',
+      finished_at: '2026-10-01T04:05:00',
+      error_code: 'DIAN_PORTAL_UNAVAILABLE',
+      error_message: 'Portal de la DIAN no disponible',
+    },
+    {
+      job_id: 'job-3',
+      business_id: 'biz-1',
+      commercial_name: 'Panadería La Espiga',
+      nit: '900123456',
+      target_period: '2026-10',
+      status: 'PROCESSING',
+      attempt_count: 1,
+      max_attempts: 3,
+      next_run_at: null,
+      started_at: '2026-10-07T19:00:00',
+      finished_at: null,
+      error_code: null,
+      error_message: null,
+    },
+  ],
+  total: 3,
+  page: 1,
+  page_size: 20,
+};
+
 /** Respuestas por defecto de las pantallas de datos, para las pruebas que solo miran el shell. */
 export const DATA_ROUTES: Record<string, MockReply> = {
   [`GET /api/dashboard/${BUSINESS_ID}`]: { body: DASHBOARD },
@@ -415,7 +517,6 @@ export const DATA_ROUTES: Record<string, MockReply> = {
   [`GET /api/documents/${BUSINESS_ID}`]: { body: DOCUMENTS },
   'GET /api/admin/summary': { body: ADMIN_SUMMARY },
   'GET /api/admin/clients': { body: ADMIN_CLIENTS },
+  'GET /api/admin/worker': { body: ADMIN_WORKER_STATUS },
+  'GET /api/admin/jobs': { body: ADMIN_JOBS },
 };
-
-
-

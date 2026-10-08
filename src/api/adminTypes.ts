@@ -238,3 +238,84 @@ export interface AdminActivationLinkResponse {
   activation_link: string;
 }
 
+// ==============================================================================
+// Story 8.7: Tipos de Documentos y Operación DIAN
+// ==============================================================================
+
+export interface AdminJobItem {
+  job_id: string;
+  business_id: string;
+  commercial_name: string;
+  nit: string;
+  target_period: string;
+  status: string;
+  attempt_count: number;
+  max_attempts: number;
+  next_run_at?: string | null;
+  started_at?: string | null;
+  finished_at?: string | null;
+  error_code?: string | null;
+  error_message?: string | null;
+}
+
+export interface AdminJobsListResponse {
+  items: AdminJobItem[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+
+export interface AdminJobsQuery {
+  status?: string;
+  business_id?: string;
+  page?: number;
+  page_size?: number;
+}
+
+export interface AdminWorkerItem {
+  name: string;
+  last_seen_at?: string | null;
+  minutes_since?: number | null;
+  is_silent: boolean;
+}
+
+export interface AdminWorkerStatusResponse {
+  silence_threshold_minutes: number;
+  workers: AdminWorkerItem[];
+}
+
+export interface AdminExtractionCreateRequest {
+  period?: string;
+  months?: number;
+}
+
+export interface AdminExtractionCreateResponse {
+  job_id: string;
+  business_id: string;
+  target_period: string;
+  status: string;
+  attempt_count?: number;
+  max_attempts?: number;
+  next_run_at?: string | null;
+  created_at?: string | null;
+  id?: string | null;
+  period?: string | null;
+}
+
+export interface AdminDocumentItem {
+  id: string;
+  number: number;
+  doc_type: string;
+  description?: string | null;
+  original_filename: string;
+  content_type: string;
+  size_bytes: number;
+  created_at: string;
+  document_id?: string | null;
+}
+
+export interface DocumentLinkResponse {
+  url: string;
+  expires_in: number;
+}
+

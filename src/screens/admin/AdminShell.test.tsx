@@ -70,14 +70,14 @@ describe('AdminShell (Story 8.2)', () => {
       expect(within(nav).getByRole('link', { name: 'Operación' })).not.toHaveClass('active');
     });
 
-    it('ADMIN en /admin/operacion muestra marcador de Operación con enlace activo', async () => {
+    it('ADMIN en /admin/operacion muestra la pantalla de Operación con enlace activo', async () => {
       setToken('jwt-admin');
-      mockApi({ 'GET /api/auth/me': { body: ME_ADMIN } });
+      // Desde la Story 8.7 la pantalla ya no es un marcador: carga el worker y los trabajos.
+      mockApi({ 'GET /api/auth/me': { body: ME_ADMIN } }); // worker y trabajos vienen de DATA_ROUTES
 
       renderApp('/admin/operacion');
 
       expect(await screen.findByRole('heading', { name: 'Operación' })).toBeInTheDocument();
-      expect(screen.getByText('Próximamente')).toBeInTheDocument();
 
       const nav = screen.getByRole('navigation', { name: 'Secciones de administración' });
       expect(within(nav).getByRole('link', { name: 'Operación' })).toHaveClass('active');

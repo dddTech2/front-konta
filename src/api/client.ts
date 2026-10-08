@@ -138,8 +138,9 @@ export interface RequestOptions {
 
 export async function apiFetch<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const { method = 'GET', body, auth = true } = options;
+  const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
   const headers: Record<string, string> = { Accept: 'application/json' };
-  if (body !== undefined) headers['Content-Type'] = 'application/json';
+  if (body !== undefined && !isFormData) headers['Content-Type'] = 'application/json';
   if (auth) {
     const token = handlers.getToken();
     if (token) headers.Authorization = `Bearer ${token}`;
@@ -150,7 +151,7 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
     response = await fetch(`${API_BASE}${path}`, {
       method,
       headers,
-      body: body === undefined ? undefined : JSON.stringify(body),
+      body: isFormData ? (body as FormData) : body === undefined ? undefined : JSON.stringify(body),
     });
   } catch {
     if (auth) handlers.onNetworkError();
@@ -159,6 +160,9 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
   if (auth) handlers.onNetworkRecovered();
 
   if (response.ok) {
+    if (response.status === 204) {
+      return undefined as T;
+    }
     const data = await readBody(response);
     if (data === undefined) throw new ApiError('http', response.status, genericMessage(response.status));
     return data as T;

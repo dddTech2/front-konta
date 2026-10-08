@@ -11,6 +11,13 @@ import type {
   AdminSummaryResponse,
   AdminTaxProfileRequest,
   ClientDetailResponse,
+  AdminDocumentItem,
+  AdminExtractionCreateRequest,
+  AdminExtractionCreateResponse,
+  AdminJobsListResponse,
+  AdminJobsQuery,
+  AdminWorkerStatusResponse,
+  DocumentLinkResponse,
 } from './adminTypes';
 
 /**
@@ -118,6 +125,102 @@ export function generateAdminActivationLink(businessId: string): Promise<AdminAc
 export function releaseAdminTelegram(businessId: string): Promise<ClientDetailResponse> {
   return apiFetch<ClientDetailResponse>(
     `/api/admin/clients/${encodeURIComponent(businessId)}/release-telegram`,
+    {
+      method: 'POST',
+    },
+  );
+}
+
+// ==============================================================================
+// Story 8.7: Endpoints de Operación y Documentos de Clientes
+// ==============================================================================
+
+/**
+ * Consulta la lista paginada de trabajos de extracción DIAN con filtros opcionales (Story 8.7 AC #3).
+ */
+export function getAdminJobs(query: AdminJobsQuery = {}): Promise<AdminJobsListResponse> {
+  const params = new URLSearchParams();
+  if (query.status) params.set('status', query.status);
+  if (query.business_id) params.set('business_id', query.business_id);
+  if (query.page !== undefined) params.set('page', String(query.page));
+  if (query.page_size !== undefined) params.set('page_size', String(query.page_size));
+  const qs = params.toString();
+  return apiFetch<AdminJobsListResponse>(`/api/admin/jobs${qs ? `?${qs}` : ''}`);
+}
+
+/**
+ * Consulta el estado y latido de los workers de fondo (Story 8.7 AC #3).
+ */
+export function getAdminWorkerStatus(): Promise<AdminWorkerStatusResponse> {
+  return apiFetch<AdminWorkerStatusResponse>('/api/admin/worker');
+}
+
+/**
+ * Encola una descarga de la DIAN para un cliente (Story 8.7 AC #2).
+ */
+export function triggerAdminExtraction(
+  businessId: string,
+  data: AdminExtractionCreateRequest,
+): Promise<AdminExtractionCreateResponse> {
+  return apiFetch<AdminExtractionCreateResponse>(
+    `/api/admin/clients/${encodeURIComponent(businessId)}/extractions`,
+    {
+      method: 'POST',
+      body: data,
+    },
+  );
+}
+
+/**
+ * Consulta la lista de documentos activos de un cliente (Story 8.7 AC #1).
+ * Nota: devuelve un arreglo directo de AdminDocumentItem (no un objeto con 'documents').
+ */
+export function getAdminDocuments(businessId: string): Promise<AdminDocumentItem[]> {
+  return apiFetch<AdminDocumentItem[]>(
+    `/api/admin/clients/${encodeURIComponent(businessId)}/documents`,
+  );
+}
+
+/**
+ * Sube un nuevo documento para el cliente con multipart/form-data (Story 8.7 AC #1).
+ */
+export function uploadAdminDocument(
+  businessId: string,
+  formData: FormData,
+): Promise<AdminDocumentItem> {
+  return apiFetch<AdminDocumentItem>(
+    `/api/admin/clients/${encodeURIComponent(businessId)}/documents`,
+    {
+      method: 'POST',
+      body: formData,
+    },
+  );
+}
+
+/**
+ * Retira un documento activo del cliente (Story 8.7 AC #1).
+ */
+export function deleteAdminDocument(
+  businessId: string,
+  documentId: string,
+): Promise<void> {
+  return apiFetch<void>(
+    `/api/admin/clients/${encodeURIComponent(businessId)}/documents/${encodeURIComponent(documentId)}`,
+    {
+      method: 'DELETE',
+    },
+  );
+}
+
+/**
+ * Genera un enlace temporal firmado para abrir o descargar un documento (Story 8.7 AC #1).
+ */
+export function getAdminDocumentLink(
+  businessId: string,
+  documentId: string,
+): Promise<DocumentLinkResponse> {
+  return apiFetch<DocumentLinkResponse>(
+    `/api/admin/clients/${encodeURIComponent(businessId)}/documents/${encodeURIComponent(documentId)}/link`,
     {
       method: 'POST',
     },

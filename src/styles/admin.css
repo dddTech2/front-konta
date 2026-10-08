@@ -1157,3 +1157,214 @@
   }
 }
 
+/* ==========================================================================
+   Story 8.7: Estilos de Documentos y Operación DIAN
+   ========================================================================== */
+
+/* Zona de subida de documentos */
+.admin-upload-section {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid #efede7;
+}
+
+.admin-dropzone {
+  border: 2px dashed var(--beige);
+  border-radius: 16px;
+  padding: 24px 16px;
+  text-align: center;
+  background: var(--blanco);
+  transition: all 0.2s ease;
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin-dropzone.dragging {
+  border-color: var(--verde-tint);
+  background: rgba(76, 119, 104, 0.08);
+}
+
+.admin-dropzone-icon {
+  font-size: 28px;
+  color: var(--verde);
+  margin-bottom: 4px;
+}
+
+.admin-dropzone-text {
+  font-size: 13.5px;
+  color: var(--gris-oscuro);
+  margin: 0;
+}
+
+.admin-dropzone-hint {
+  font-size: 11.5px;
+  color: var(--gris-medio);
+  margin: 0;
+}
+
+.admin-file-input-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+
+.admin-selected-file-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: #e8f5e9;
+  color: var(--verde-tint);
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  margin-top: 8px;
+  word-break: break-all;
+}
+
+.admin-doc-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.admin-doc-num {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--gris-medio);
+}
+
+.admin-doc-filename {
+  font-size: 11px;
+  color: var(--gris-medio);
+  word-break: break-all;
+}
+
+/* Tarjeta móvil para documentos */
+.admin-doc-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+}
+
+.admin-doc-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.admin-doc-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--gris-medio);
+}
+
+/* Pantalla Operación */
+.admin-operacion-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.admin-operacion-refresh {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.admin-worker-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px;
+  margin-top: 12px;
+}
+
+.admin-worker-item-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 16px;
+  background: var(--gris-claro);
+  border-radius: 12px;
+}
+
+.admin-worker-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.admin-worker-name {
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--verde);
+}
+
+.admin-worker-last-seen {
+  font-size: 12px;
+  color: var(--gris-medio);
+}
+
+.admin-worker-threshold-note {
+  font-size: 12px;
+  color: var(--gris-medio);
+  margin-top: 8px;
+}
+
+/* Tarjeta móvil para trabajos DIAN */
+.admin-job-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+}
+
+.admin-job-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.admin-job-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--gris-oscuro);
+  padding: 6px 0;
+  border-top: 1px solid #efede7;
+  border-bottom: 1px solid #efede7;
+}
+
+.admin-job-error {
+  font-size: 12px;
+  color: var(--terracota-dark);
+  background: #fde8e4;
+  padding: 6px 10px;
+  border-radius: 8px;
+  line-height: 1.4;
+}
+
+/* Toggle buttons para extracción DIAN */
+.admin-toggle-btn.btn-sm {
+  padding: 8px 12px;
+  font-size: 13px;
+}
+
+

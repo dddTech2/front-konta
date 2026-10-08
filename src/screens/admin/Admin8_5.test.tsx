@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { setToken } from '../../auth/session';
 import {
   ADMIN_CLIENT_DETAIL,
+  ADMIN_DOCUMENTS,
   ADMIN_CLIENTS,
   ADMIN_SUMMARY,
 } from '../../test/fixtures';
@@ -244,6 +245,7 @@ describe('Story 8.5: Panel admin en la SPA — Resumen, lista de clientes y fich
       mockApi({
         'GET /api/auth/me': { body: ME_ADMIN },
         'GET /api/admin/clients/biz-1': { body: ADMIN_CLIENT_DETAIL },
+        'GET /api/admin/clients/biz-1/documents': { body: ADMIN_DOCUMENTS },
       });
 
       renderApp('/admin/clientes/biz-1');
@@ -290,8 +292,8 @@ describe('Story 8.5: Panel admin en la SPA — Resumen, lista de clientes y fich
 
       // Documentos
       expect(screen.getByRole('heading', { name: 'Documentos' })).toBeInTheDocument();
-      // El número va en <strong>: se compara el texto completo del párrafo.
-      expect(screen.getByText((_, el) => el?.tagName === 'P' && /3\s+documentos activos/.test(el.textContent ?? ''))).toBeInTheDocument();
+      // Desde la Story 8.7 la sección lista los documentos (fixture con 3) en vez de solo contarlos.
+      expect(await screen.findAllByText('RUT_2026.pdf')).not.toHaveLength(0);
 
       // Botón "Volver a clientes"
       const backLink = screen.getByRole('link', { name: /Volver a clientes/ });
