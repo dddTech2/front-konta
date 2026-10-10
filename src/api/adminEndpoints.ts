@@ -18,6 +18,17 @@ import type {
   AdminJobsQuery,
   AdminWorkerStatusResponse,
   DocumentLinkResponse,
+  AdminPricingPlan,
+  AdminPricingPlanCreateRequest,
+  AdminPricingPlanUpdateRequest,
+  AdminPricingQuote,
+  AdminPricingRate,
+  AdminPricingRateCreateRequest,
+  AdminPricingRateHistoryItem,
+  AdminPricingResponse,
+  AdminPricingSettingsResponse,
+  AdminPricingSettingsUpdateRequest,
+  AdminSubscriptionUpdateRequest,
 } from './adminTypes';
 
 /**
@@ -226,4 +237,130 @@ export function getAdminDocumentLink(
     },
   );
 }
+
+// ==============================================================================
+// Story 9.3 / 9.2: Endpoints de Tarifas, Planes, Ajustes y Cotizaciones
+// ==============================================================================
+
+/**
+ * Consulta la configuración de tarifas, planes, cotizaciones y días de gracia (Story 9.2 AC #1).
+ */
+export function getAdminPricing(): Promise<AdminPricingResponse> {
+  return apiFetch<AdminPricingResponse>('/api/admin/pricing');
+}
+
+/**
+ * Actualiza un plan de suscripción (Story 9.2 AC #2).
+ */
+export function updateAdminPricingPlan(
+  code: string,
+  data: AdminPricingPlanUpdateRequest,
+): Promise<AdminPricingPlan> {
+  return apiFetch<AdminPricingPlan>(`/api/admin/pricing/plans/${encodeURIComponent(code)}`, {
+    method: 'PUT',
+    body: data,
+  });
+}
+
+/**
+ * Crea un nuevo plan de suscripción (Story 9.2 AC #2b).
+ */
+export function createAdminPricingPlan(
+  data: AdminPricingPlanCreateRequest,
+): Promise<AdminPricingPlan> {
+  return apiFetch<AdminPricingPlan>('/api/admin/pricing/plans', {
+    method: 'POST',
+    body: data,
+  });
+}
+
+/**
+ * Consulta la configuración de días de gracia (Story 9.2 AC #2c).
+ */
+export function getAdminPricingSettings(): Promise<AdminPricingSettingsResponse> {
+  return apiFetch<AdminPricingSettingsResponse>('/api/admin/pricing/settings');
+}
+
+/**
+ * Actualiza los días de gracia (Story 9.2 AC #2c).
+ */
+export function updateAdminPricingSettings(
+  data: AdminPricingSettingsUpdateRequest,
+): Promise<AdminPricingSettingsResponse> {
+  return apiFetch<AdminPricingSettingsResponse>('/api/admin/pricing/settings', {
+    method: 'PUT',
+    body: data,
+  });
+}
+
+/**
+ * Crea o actualiza una tarifa mensual (Story 9.2 AC #3).
+ */
+export function setAdminPricingRate(
+  data: AdminPricingRateCreateRequest,
+): Promise<AdminPricingRate> {
+  return apiFetch<AdminPricingRate>('/api/admin/pricing/rates', {
+    method: 'POST',
+    body: data,
+  });
+}
+
+/**
+ * Cancela una tarifa programada antes de entrar en vigencia (Story 9.2 AC #4).
+ */
+export function deleteAdminPricingRate(id: string): Promise<void> {
+  return apiFetch<void>(`/api/admin/pricing/rates/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+  });
+}
+
+/**
+ * Consulta el historial de tarifas de un segmento (Story 9.2 AC #5).
+ */
+export function getAdminPricingRateHistory(
+  incomeSource: string,
+  taxpayerType: string,
+): Promise<AdminPricingRateHistoryItem[]> {
+  const params = new URLSearchParams({
+    income_source: incomeSource,
+    taxpayer_type: taxpayerType,
+  });
+  return apiFetch<AdminPricingRateHistoryItem[]>(
+    `/api/admin/pricing/rates/history?${params.toString()}`,
+  );
+}
+
+/**
+ * Consulta la cotización para un segmento y plan (Story 9.2 AC #6).
+ */
+export function getAdminPricingQuote(params: {
+  income_source: string;
+  taxpayer_type?: string;
+  person_type?: string;
+  plan: string;
+}): Promise<AdminPricingQuote> {
+  const qs = new URLSearchParams();
+  qs.set('income_source', params.income_source);
+  if (params.taxpayer_type) qs.set('taxpayer_type', params.taxpayer_type);
+  if (params.person_type) qs.set('person_type', params.person_type);
+  qs.set('plan', params.plan);
+  return apiFetch<AdminPricingQuote>(`/api/admin/pricing/quote?${qs.toString()}`);
+}
+
+/**
+ * Actualiza la suscripción (precio o plan) de un cliente (Story 9.2 AC #8).
+ */
+export function updateAdminSubscription(
+  businessId: string,
+  data: AdminSubscriptionUpdateRequest,
+): Promise<ClientDetailResponse> {
+  return apiFetch<ClientDetailResponse>(
+    `/api/admin/clients/${encodeURIComponent(businessId)}/subscription`,
+    {
+      method: 'PATCH',
+      body: data,
+    },
+  );
+}
+
 

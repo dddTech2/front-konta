@@ -48,13 +48,33 @@ export class ApiError extends Error {
   readonly kind: ApiErrorKind;
   readonly status: number;
   readonly code?: string;
+  readonly body?: Record<string, unknown>;
 
-  constructor(kind: ApiErrorKind, status: number, message: string, code?: string) {
+  constructor(
+    kind: ApiErrorKind,
+    status: number,
+    message: string,
+    code?: string,
+    body?: Record<string, unknown>,
+  ) {
     super(message);
     this.name = 'ApiError';
     this.kind = kind;
     this.status = status;
     this.code = code;
+    this.body = body;
+  }
+
+  get expected_amount(): string | undefined {
+    return typeof this.body?.expected_amount === 'string' ? this.body.expected_amount : undefined;
+  }
+
+  get amount(): string | undefined {
+    return typeof this.body?.amount === 'string' ? this.body.amount : undefined;
+  }
+
+  get difference(): string | undefined {
+    return typeof this.body?.difference === 'string' ? this.body.difference : undefined;
   }
 }
 
@@ -103,6 +123,7 @@ function extractMessage(body: unknown): string | undefined {
   const nested = asRecord(record.detail);
   if (nested && typeof nested.message === 'string') return nested.message;
   if (typeof record.message === 'string') return record.message;
+  if (typeof record.code === 'string') return record.code;
   return undefined;
 }
 
@@ -169,8 +190,9 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
   }
 
   const errorBody = await readBody(response);
+  const errorRecord = asRecord(errorBody) ?? undefined;
   const message = extractMessage(errorBody) ?? genericMessage(response.status);
-  const rawCode = asRecord(errorBody)?.code;
+  const rawCode = errorRecord?.code;
   const errorCode = typeof rawCode === 'string' ? rawCode : undefined;
 
   // Único punto de manejo de status. Las llamadas públicas devuelven el error al formulario.
@@ -178,15 +200,15 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
     switch (response.status) {
       case 401:
         handlers.onUnauthorized();
-        throw new ApiError('unauthorized', 401, message, errorCode);
+        throw new ApiError('unauthorized', 401, message, errorCode, errorRecord);
       case 403:
         handlers.onForbidden(extractSuspension(errorBody));
-        throw new ApiError('forbidden', 403, message, errorCode);
+        throw new ApiError('forbidden', 403, message, errorCode, errorRecord);
       default:
         break;
     }
   }
-  throw new ApiError('http', response.status, message, errorCode);
+  throw new ApiError('http', response.status, message, errorCode, errorRecord);
 }
 
 export const getMe = (): Promise<Me> => apiFetch<Me>('/api/auth/me');

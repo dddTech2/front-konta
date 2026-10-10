@@ -7,8 +7,9 @@ import AdminFicha from './AdminFicha';
 import AdminNuevoCliente from './AdminNuevoCliente';
 import AdminOperacion from './AdminOperacion';
 import AdminResumen from './AdminResumen';
+import AdminTarifas from './AdminTarifas';
 
-export { AdminClientes, AdminFicha, AdminNuevoCliente, AdminOperacion, AdminResumen };
+export { AdminClientes, AdminFicha, AdminNuevoCliente, AdminOperacion, AdminResumen, AdminTarifas };
 
 export default function AdminShell() {
   const { logout } = useAuth();
@@ -40,6 +41,9 @@ export default function AdminShell() {
           <NavLink to="/admin/clientes" className={({ isActive }) => (isActive ? 'active' : '')}>
             Clientes
           </NavLink>
+          <NavLink to="/admin/tarifas" className={({ isActive }) => (isActive ? 'active' : '')}>
+            Tarifas
+          </NavLink>
           <NavLink to="/admin/operacion" className={({ isActive }) => (isActive ? 'active' : '')}>
             Operación
           </NavLink>
@@ -51,6 +55,7 @@ export default function AdminShell() {
             <Route path="clientes" element={<AdminClientes />} />
             <Route path="clientes/nuevo" element={<AdminNuevoCliente />} />
             <Route path="clientes/:businessId" element={<AdminFicha />} />
+            <Route path="tarifas" element={<AdminTarifas />} />
             <Route path="operacion" element={<AdminOperacion />} />
             <Route path="*" element={<Navigate to="/admin" replace />} />
           </Routes>

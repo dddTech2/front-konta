@@ -57,6 +57,22 @@ export interface AdminTaxProfile {
   is_withholding_agent: boolean;
 }
 
+/** Cambio de precio de la suscripción (Story 9.2, `price_changes` de la ficha). Importes como cadena decimal. */
+export interface AdminSubscriptionPriceChange {
+  id: string;
+  created_at: string | null;
+  old_plan: string | null;
+  new_plan: string | null;
+  old_monthly_price: string | null;
+  new_monthly_price: string | null;
+  old_discount_rate: string | null;
+  new_discount_rate: string | null;
+  old_final_price: string | null;
+  new_final_price: string | null;
+  reason: string;
+  admin: string | null;
+}
+
 export interface AdminSubscriptionDetail {
   id: string;
   plan: string;
@@ -67,6 +83,11 @@ export interface AdminSubscriptionDetail {
   start_date?: string | null;
   cutoff_date?: string | null;
   grace_period_end?: string | null;
+  monthly_price?: string | null;
+  price_origin?: 'TARIFA' | 'ESPECIAL' | string | null;
+  price_note?: string | null;
+  current_rate_monthly?: string | null;
+  price_changes?: AdminSubscriptionPriceChange[];
 }
 
 export interface AdminPaymentSummary {
@@ -77,6 +98,8 @@ export interface AdminPaymentSummary {
   payment_method?: string | null;
   verified_by_admin_id?: string | null;
   created_at?: string | null;
+  expected_amount?: string | null;
+  difference?: string | null;
 }
 
 export interface AdminExtractionSummary {
@@ -113,6 +136,7 @@ export interface ClientDetailResponse {
   telegram_chat_id?: number | null;
   iva_periodicity?: string | null;
   is_withholding_agent?: boolean | null;
+  price_changes?: AdminSubscriptionPriceChange[];
 }
 
 export interface AdminSummaryWorker {
@@ -180,7 +204,7 @@ export interface AdminClientsQuery {
 // ==============================================================================
 
 export type AdminPersonType = 'PERSONA' | 'EMPRESA';
-export type AdminPlan = 'TRIMESTRAL' | 'SEMESTRAL' | 'ANUAL';
+export type AdminPlan = string;
 export type AdminIncomeSource = 'DIAN' | 'MANUAL_SALES';
 
 export interface AdminClientCreateRequest {
@@ -191,7 +215,7 @@ export interface AdminClientCreateRequest {
   company_name?: string | null;
   nit?: string | null;
   legal_rep_doc?: string | null;
-  plan: 'TRIMESTRAL' | 'SEMESTRAL' | 'ANUAL' | string;
+  plan: string;
   income_source?: 'DIAN' | 'MANUAL_SALES' | string | null;
 }
 
@@ -199,11 +223,16 @@ export interface AdminClientCreateResponse {
   business_id: string;
   user_id: string;
   activation_link: string;
+  final_price?: string | null;
+  monthly_price?: string | null;
+  discount_rate?: string | null;
+  cutoff_date?: string | null;
 }
 
 export interface AdminPaymentCreateRequest {
   amount: number | string;
   reference: string;
+  allow_mismatch?: boolean;
 }
 
 export interface AdminPaymentItem {
@@ -213,6 +242,8 @@ export interface AdminPaymentItem {
   reference_code?: string | null;
   verified_by_admin_id?: string | null;
   created_at?: string | null;
+  expected_amount?: string | null;
+  difference?: string | null;
 }
 
 export interface AdminPaymentResponse {
@@ -223,6 +254,8 @@ export interface AdminPaymentResponse {
   payment_id?: string | null;
   amount?: string | null;
   reference?: string | null;
+  expected_amount?: string | null;
+  difference?: string | null;
 }
 
 export interface AdminIncomeSourceRequest {
@@ -317,5 +350,104 @@ export interface AdminDocumentItem {
 export interface DocumentLinkResponse {
   url: string;
   expires_in: number;
+}
+
+// ==============================================================================
+// Story 9.3 / 9.2: Tipos de Tarifas, Planes y Cotizaciones
+// ==============================================================================
+
+export interface AdminPricingPlan {
+  code: string;
+  name: string;
+  months: number;
+  discount_rate: string;
+  is_active: boolean;
+  sort_order: number;
+}
+
+export interface AdminPricingRate {
+  id?: string;
+  income_source: 'DIAN' | 'MANUAL_SALES' | string;
+  taxpayer_type: 'PERSONA_NATURAL' | 'PERSONA_JURIDICA' | string;
+  monthly_price: string;
+  effective_from: string;
+  created_by_admin_id?: string | null;
+}
+
+export interface AdminPricingScheduledRate {
+  id: string;
+  income_source: 'DIAN' | 'MANUAL_SALES' | string;
+  taxpayer_type: 'PERSONA_NATURAL' | 'PERSONA_JURIDICA' | string;
+  monthly_price: string;
+  effective_from: string;
+}
+
+export interface AdminPricingQuote {
+  income_source: 'DIAN' | 'MANUAL_SALES' | string;
+  taxpayer_type: 'PERSONA_NATURAL' | 'PERSONA_JURIDICA' | string;
+  plan: string;
+  months: number;
+  monthly_price: string;
+  gross_total: string;
+  discount_rate: string;
+  discount_amount: string;
+  final_price: string;
+  start_date?: string | null;
+  cutoff_date?: string | null;
+}
+
+export interface AdminPricingResponse {
+  grace_days: number;
+  plans: AdminPricingPlan[];
+  rates: AdminPricingRate[];
+  scheduled: AdminPricingScheduledRate[];
+  quotes: AdminPricingQuote[];
+}
+
+export interface AdminPricingPlanUpdateRequest {
+  name?: string;
+  discount_rate?: number | string;
+  is_active?: boolean;
+}
+
+export interface AdminPricingPlanCreateRequest {
+  code: string;
+  name: string;
+  months: number;
+  discount_rate: number | string;
+}
+
+export interface AdminPricingSettingsResponse {
+  grace_days: number;
+  updated_at?: string | null;
+}
+
+export interface AdminPricingSettingsUpdateRequest {
+  grace_days: number;
+}
+
+export interface AdminPricingRateCreateRequest {
+  income_source: string;
+  taxpayer_type: string;
+  monthly_price: number | string;
+  effective_from?: string;
+}
+
+export interface AdminPricingRateHistoryItem {
+  id?: string;
+  income_source?: string;
+  taxpayer_type?: string;
+  monthly_price: string;
+  effective_from: string;
+  created_by?: string | null;
+  created_at?: string | null;
+}
+
+export interface AdminSubscriptionUpdateRequest {
+  plan?: string;
+  monthly_price?: number | string;
+  discount_rate?: number | string;
+  use_current_rate?: boolean;
+  reason: string;
 }
 

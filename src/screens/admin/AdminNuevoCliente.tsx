@@ -1,15 +1,18 @@
-import { useRef, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
-import { createAdminClient } from '../../api/adminEndpoints';
+import { createAdminClient, getAdminPricing, getAdminPricingQuote } from '../../api/adminEndpoints';
 import type {
   AdminClientCreateRequest,
   AdminClientCreateResponse,
   AdminIncomeSource,
   AdminPersonType,
   AdminPlan,
+  AdminPricingPlan,
+  AdminPricingQuote,
 } from '../../api/adminTypes';
 import { ApiError, NETWORK_ERROR_MESSAGE } from '../../api/client';
 import { clientWhatsappUrl } from '../../config';
+import { fmtDeadline, fmtMoney, fmtPercent } from '../../format';
 
 export default function AdminNuevoCliente() {
   const [personType, setPersonType] = useState<AdminPersonType>('PERSONA');
@@ -22,6 +25,12 @@ export default function AdminNuevoCliente() {
   const [plan, setPlan] = useState<AdminPlan>('TRIMESTRAL');
   const [incomeSource, setIncomeSource] = useState<AdminIncomeSource>('DIAN');
 
+  // Planes activos cargados dinámicamente desde la API (Story 9.3 AC #9)
+  const [activePlans, setActivePlans] = useState<AdminPricingPlan[]>([]);
+  const [quote, setQuote] = useState<AdminPricingQuote | null>(null);
+  const [quoteLoading, setQuoteLoading] = useState(false);
+  const [quoteError, setQuoteError] = useState<string | null>(null);
+
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [created, setCreated] = useState<AdminClientCreateResponse | null>(null);
@@ -29,6 +38,66 @@ export default function AdminNuevoCliente() {
 
   // Protección contra doble envío
   const submitting = useRef(false);
+
+  // Carga planes activos desde GET /api/admin/pricing (AC #9)
+  useEffect(() => {
+    let mounted = true;
+    getAdminPricing()
+      .then((res) => {
+        if (!mounted) return;
+        const actives = res.plans.filter((p) => p.is_active);
+        setActivePlans(actives);
+        if (actives.length > 0 && !actives.some((p) => p.code === plan)) {
+          setPlan(actives[0].code);
+        }
+      })
+      .catch(() => {
+        // En caso de que falle o mock no configurado, conserva la selección actual
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  // Cotización dinámica al cambiar tipo de contribuyente, origen de ingresos o plan (AC #9)
+  useEffect(() => {
+    if (!plan) return;
+    let mounted = true;
+    setQuoteLoading(true);
+    setQuoteError(null);
+
+    getAdminPricingQuote({
+      income_source: incomeSource,
+      person_type: personType,
+      plan,
+    })
+      .then((q) => {
+        if (mounted) {
+          setQuote(q);
+          setQuoteError(null);
+        }
+      })
+      .catch((err) => {
+        if (mounted) {
+          setQuote(null);
+          if (err instanceof ApiError && (err.code === 'NO_RATE' || err.status === 409)) {
+            setQuoteError(err.message || 'No hay tarifa vigente para este segmento.');
+          } else if (err instanceof ApiError) {
+            setQuoteError(err.message);
+          } else {
+            setQuoteError('No se pudo cotizar el plan para este segmento.');
+          }
+        }
+      })
+      .finally(() => {
+        if (mounted) setQuoteLoading(false);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [personType, incomeSource, plan]);
 
   // Validación de campos del formulario
   function validate(): string | null {
@@ -188,6 +257,24 @@ export default function AdminNuevoCliente() {
               </button>
             </div>
           </div>
+
+          {/* Valor del periodo y fecha de corte (Story 9.3 AC #10) */}
+          {(created.final_price || created.cutoff_date) && (
+            <div className="admin-success-sub-details">
+              {created.final_price && (
+                <div className="admin-success-sub-item">
+                  <span className="admin-meta-label">Valor del periodo:</span>{' '}
+                  <strong className="text-accent">{fmtMoney(Number(created.final_price))}</strong>
+                </div>
+              )}
+              {created.cutoff_date && (
+                <div className="admin-success-sub-item">
+                  <span className="admin-meta-label">Fecha de corte:</span>{' '}
+                  <strong>{fmtDeadline(created.cutoff_date)}</strong>
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="admin-success-actions">
             <a
@@ -414,7 +501,7 @@ export default function AdminNuevoCliente() {
             </>
           )}
 
-          {/* Selector de Plan */}
+          {/* Selector de Plan (Story 9.3 AC #9: planes activos de GET /api/admin/pricing) */}
           <div className="field">
             <label className="field-label" htmlFor="cliente-plan">
               Plan
@@ -423,12 +510,20 @@ export default function AdminNuevoCliente() {
               id="cliente-plan"
               className="field-input"
               value={plan}
-              onChange={(e) => setPlan(e.target.value as AdminPlan)}
+              onChange={(e) => setPlan(e.target.value)}
               disabled={busy}
             >
-              <option value="TRIMESTRAL">Trimestral (3 meses)</option>
-              <option value="SEMESTRAL">Semestral (6 meses)</option>
-              <option value="ANUAL">Anual (12 meses)</option>
+              {activePlans.length > 0 ? (
+                activePlans.map((p) => (
+                  <option key={p.code} value={p.code}>
+                    {p.name} ({p.months} {p.months === 1 ? 'mes' : 'meses'})
+                  </option>
+                ))
+              ) : (
+                <option value="" disabled>
+                  Cargando planes…
+                </option>
+              )}
             </select>
           </div>
 
@@ -449,8 +544,30 @@ export default function AdminNuevoCliente() {
             </select>
           </div>
 
+          {/* Cotización dinámica (AC #9) */}
+          {quoteLoading ? (
+            <div className="admin-quote-loading" aria-live="polite">
+              <span className="admin-muted-text">Calculando cotización…</span>
+            </div>
+          ) : quoteError ? (
+            <div className="admin-quote-error" role="alert">
+              <p className="form-error">{quoteError}</p>
+            </div>
+          ) : quote ? (
+            <div className="admin-quote-preview" aria-live="polite">
+              <p className="admin-quote-text">
+                Valor del periodo: <strong>{fmtMoney(Number(quote.final_price))}</strong> (valor mensual{' '}
+                {fmtMoney(Number(quote.monthly_price))}, descuento {fmtPercent(Number(quote.discount_rate))} %)
+              </p>
+            </div>
+          ) : null}
+
           <div className="stack admin-form-actions">
-            <button className="btn-primary" type="submit" disabled={busy}>
+            <button
+              className="btn-primary"
+              type="submit"
+              disabled={busy || Boolean(quoteError) || quoteLoading}
+            >
               {busy ? 'Creando cliente…' : 'Crear cliente'}
             </button>
             <Link to="/admin/clientes" className="btn-outline">

@@ -6,14 +6,21 @@ import {
   getAdminClientDetail,
   getAdminDocumentLink,
   getAdminDocuments,
+  getAdminPricing,
   recordAdminPayment,
   releaseAdminTelegram,
   triggerAdminExtraction,
   updateAdminIncomeSource,
+  updateAdminSubscription,
   updateAdminTaxProfile,
   uploadAdminDocument,
 } from '../../api/adminEndpoints';
-import type { AdminDocumentItem, AdminExtractionCreateResponse, AdminIncomeSource } from '../../api/adminTypes';
+import type {
+  AdminDocumentItem,
+  AdminExtractionCreateResponse,
+  AdminIncomeSource,
+  AdminPricingPlan,
+} from '../../api/adminTypes';
 import { ApiError, NETWORK_ERROR_MESSAGE } from '../../api/client';
 import Dialog from '../../components/Dialog';
 import { ResourceView } from '../../components/ScreenState';
@@ -91,6 +98,55 @@ function formatExtractionError(errorCode?: string | null): string {
   }
 }
 
+function computeSubPeriodPreview(
+  currentSub: any,
+  plansList: AdminPricingPlan[],
+  mode: 'special' | 'plan' | 'current',
+  specialMonthlyStr: string,
+  specialDiscountStr: string,
+  selectedPlanCode: string,
+): { beforeFinal: number; afterFinal: number } {
+  const beforeFinal = currentSub?.final_price ? Math.round(Number(currentSub.final_price)) : 0;
+  if (!currentSub) return { beforeFinal: 0, afterFinal: 0 };
+
+  const currentPlanObj = plansList.find((p) => p.code === currentSub.plan);
+  const currentMonths = currentPlanObj
+    ? currentPlanObj.months
+    : currentSub.plan === 'SEMESTRAL'
+      ? 6
+      : currentSub.plan === 'ANUAL'
+        ? 12
+        : 3;
+
+  let afterFinal = beforeFinal;
+
+  if (mode === 'special') {
+    const cleanM = specialMonthlyStr.replace(/\D/g, '');
+    const monthly = cleanM ? Number(cleanM) : Number(currentSub.monthly_price || currentSub.current_rate_monthly || 0);
+    const disc = specialDiscountStr !== '' ? Number(specialDiscountStr) : Number(currentSub.discount_rate || 0);
+    const gross = monthly * currentMonths;
+    const discountAmt = Math.round(gross * (disc / 100));
+    afterFinal = gross - discountAmt;
+  } else if (mode === 'plan') {
+    const chosenPlan = plansList.find((p) => p.code === selectedPlanCode);
+    const months = chosenPlan ? chosenPlan.months : currentMonths;
+    const disc = chosenPlan ? Number(chosenPlan.discount_rate) : 0;
+    const monthly = Number(currentSub.monthly_price || currentSub.current_rate_monthly || 0);
+    const gross = monthly * months;
+    const discountAmt = Math.round(gross * (disc / 100));
+    afterFinal = gross - discountAmt;
+  } else if (mode === 'current') {
+    const monthly = Number(currentSub.current_rate_monthly || currentSub.monthly_price || 0);
+    const chosenPlan = plansList.find((p) => p.code === currentSub.plan);
+    const disc = chosenPlan ? Number(chosenPlan.discount_rate) : Number(currentSub.discount_rate || 0);
+    const gross = monthly * currentMonths;
+    const discountAmt = Math.round(gross * (disc / 100));
+    afterFinal = gross - discountAmt;
+  }
+
+  return { beforeFinal, afterFinal };
+}
+
 export default function AdminFicha() {
   const { businessId = '' } = useParams<{ businessId: string }>();
   const location = useLocation();
@@ -111,7 +167,24 @@ export default function AdminFicha() {
   const [paymentRef, setPaymentRef] = useState('');
   const [paymentBusy, setPaymentBusy] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
+  const [paymentMismatch, setPaymentMismatch] = useState<{
+    expected_amount: string;
+    amount: string;
+    difference: string;
+  } | null>(null);
   const paymentSubmitting = useRef(false);
+
+  // ---------- Estado: Cambiar precio o plan (Story 9.3 AC #7) ----------
+  const [subChangeOpen, setSubChangeOpen] = useState(false);
+  const [subChangeMode, setSubChangeMode] = useState<'special' | 'plan' | 'current'>('special');
+  const [subSpecialMonthly, setSubSpecialMonthly] = useState('');
+  const [subSpecialDiscount, setSubSpecialDiscount] = useState('');
+  const [subSelectedPlan, setSubSelectedPlan] = useState('');
+  const [subChangeReason, setSubChangeReason] = useState('');
+  const [subChangeBusy, setSubChangeBusy] = useState(false);
+  const [subChangeError, setSubChangeError] = useState<string | null>(null);
+  const [pricingPlans, setPricingPlans] = useState<AdminPricingPlan[]>([]);
+  const subChangeSubmitting = useRef(false);
 
   // ---------- Estado: Origen de ingresos (AC #3) ----------
   const [incomeSourceOpen, setIncomeSourceOpen] = useState(false);
@@ -195,7 +268,7 @@ export default function AdminFicha() {
     setPaymentStep('confirm');
   }
 
-  async function handlePaymentConfirm() {
+  async function handlePaymentConfirm(allowMismatch = false) {
     if (paymentSubmitting.current) return;
     paymentSubmitting.current = true;
     setPaymentBusy(true);
@@ -205,13 +278,24 @@ export default function AdminFicha() {
       await recordAdminPayment(businessId, {
         amount: Number(paymentAmount.replace(/\D/g, '')),
         reference: paymentRef.trim(),
+        allow_mismatch: allowMismatch,
       });
       setPaymentOpen(false);
+      setPaymentMismatch(null);
       retry();
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.kind !== 'unauthorized' && err.kind !== 'forbidden') {
-          setPaymentError(err.message);
+          if (err.status === 409 && (err.code === 'AMOUNT_MISMATCH' || err.expected_amount)) {
+            setPaymentMismatch({
+              expected_amount: err.expected_amount || '',
+              amount: err.amount || '',
+              difference: err.difference || '',
+            });
+            setPaymentError(null);
+          } else {
+            setPaymentError(err.message);
+          }
         }
       } else {
         setPaymentError(NETWORK_ERROR_MESSAGE);
@@ -219,6 +303,115 @@ export default function AdminFicha() {
     } finally {
       paymentSubmitting.current = false;
       setPaymentBusy(false);
+    }
+  }
+
+  // Handler: Abrir cambio de suscripción (Story 9.3 AC #7)
+  function handleOpenSubChange(currentSub?: {
+    monthly_price?: string | null;
+    base_price?: string | null;
+    discount_rate?: string | null;
+    plan?: string | null;
+  }) {
+    setSubChangeMode('special');
+    setSubSpecialMonthly(
+      currentSub?.monthly_price
+        ? String(Math.round(Number(currentSub.monthly_price)))
+        : currentSub?.base_price
+          ? String(Math.round(Number(currentSub.base_price)))
+          : '',
+    );
+    setSubSpecialDiscount(currentSub?.discount_rate ? String(Number(currentSub.discount_rate)) : '');
+    setSubSelectedPlan(currentSub?.plan || 'TRIMESTRAL');
+    setSubChangeReason('');
+    setSubChangeError(null);
+    setSubChangeOpen(true);
+
+    if (pricingPlans.length === 0) {
+      getAdminPricing()
+        .then((res) => {
+          const actives = res.plans.filter((p) => p.is_active);
+          setPricingPlans(actives);
+        })
+        .catch(() => {});
+    }
+  }
+
+  // Handler: Guardar cambio de suscripción (Story 9.3 AC #7)
+  async function handleSubChangeSubmit(e: FormEvent) {
+    e.preventDefault();
+    if (subChangeSubmitting.current) return;
+
+    if (!subChangeReason.trim()) {
+      setSubChangeError('El motivo del cambio es obligatorio.');
+      return;
+    }
+
+    const payload: {
+      plan?: string;
+      monthly_price?: number;
+      discount_rate?: number;
+      use_current_rate?: boolean;
+      reason: string;
+    } = {
+      reason: subChangeReason.trim(),
+    };
+
+    if (subChangeMode === 'special') {
+      const cleanMonthly = subSpecialMonthly.replace(/\D/g, '');
+      const cleanDisc = subSpecialDiscount.trim();
+
+      if (!cleanMonthly && cleanDisc === '') {
+        setSubChangeError('Ingresa un nuevo valor mensual o un porcentaje de descuento para el precio especial.');
+        return;
+      }
+
+      if (cleanMonthly) {
+        const m = Number(cleanMonthly);
+        if (m <= 0 || m > 10_000_000) {
+          setSubChangeError('El valor mensual debe ser mayor a 0 y menor o igual a $10.000.000.');
+          return;
+        }
+        payload.monthly_price = m;
+      }
+
+      if (cleanDisc !== '') {
+        const d = Number(cleanDisc);
+        if (Number.isNaN(d) || d < 0 || d > 50) {
+          setSubChangeError('El descuento debe estar entre 0 % y 50 %.');
+          return;
+        }
+        payload.discount_rate = d;
+      }
+    } else if (subChangeMode === 'plan') {
+      if (!subSelectedPlan) {
+        setSubChangeError('Selecciona un plan activo.');
+        return;
+      }
+      payload.plan = subSelectedPlan;
+    } else if (subChangeMode === 'current') {
+      payload.use_current_rate = true;
+    }
+
+    subChangeSubmitting.current = true;
+    setSubChangeBusy(true);
+    setSubChangeError(null);
+
+    try {
+      await updateAdminSubscription(businessId, payload);
+      setSubChangeOpen(false);
+      retry();
+    } catch (err) {
+      if (err instanceof ApiError) {
+        if (err.kind !== 'unauthorized' && err.kind !== 'forbidden') {
+          setSubChangeError(err.message);
+        }
+      } else {
+        setSubChangeError(NETWORK_ERROR_MESSAGE);
+      }
+    } finally {
+      subChangeSubmitting.current = false;
+      setSubChangeBusy(false);
     }
   }
 
@@ -776,11 +969,22 @@ export default function AdminFicha() {
                 )}
               </div>
 
-              {/* Suscripción */}
+              {/* Suscripción (Story 9.3 AC #6, #7) */}
               <div className="card admin-card">
                 <div className="admin-card-head">
                   <h2 className="admin-section-title">Suscripción</h2>
-                  {subscription && statusBadge(subscription.status)}
+                  <div className="admin-card-head-actions">
+                    {subscription && statusBadge(subscription.status)}
+                    {subscription && (
+                      <button
+                        type="button"
+                        className="btn-outline admin-btn-sm"
+                        onClick={() => handleOpenSubChange(subscription)}
+                      >
+                        Cambiar precio o plan
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 {subscription ? (
@@ -788,6 +992,34 @@ export default function AdminFicha() {
                     <div className="admin-sub-item">
                       <span className="admin-meta-label">Plan</span>
                       <strong className="admin-sub-value">{subscription.plan}</strong>
+                    </div>
+                    <div className="admin-sub-item">
+                      <span className="admin-meta-label">Valor mensual</span>
+                      <strong className="admin-sub-value">
+                        {subscription.monthly_price
+                          ? fmtMoney(Number(subscription.monthly_price))
+                          : subscription.base_price
+                            ? fmtMoney(Number(subscription.base_price))
+                            : '—'}
+                      </strong>
+                      {subscription.monthly_price &&
+                        subscription.current_rate_monthly &&
+                        Number(subscription.monthly_price) !== Number(subscription.current_rate_monthly) && (
+                          <span className="admin-sub-hint-rate">
+                            Tarifa vigente hoy: {fmtMoney(Number(subscription.current_rate_monthly))}
+                          </span>
+                        )}
+                    </div>
+                    <div className="admin-sub-item">
+                      <span className="admin-meta-label">Origen</span>
+                      <span className="admin-sub-value">
+                        {subscription.price_origin === 'PRECIO_ESPECIAL' || subscription.price_origin === 'ESPECIAL'
+                          ? 'Precio especial'
+                          : 'Tarifa'}
+                      </span>
+                      {subscription.price_note && (
+                        <span className="admin-sub-price-note">{subscription.price_note}</span>
+                      )}
                     </div>
                     <div className="admin-sub-item">
                       <span className="admin-meta-label">Precio base</span>
@@ -831,7 +1063,7 @@ export default function AdminFicha() {
                 )}
               </div>
 
-              {/* Pagos recientes con acción "Registrar pago" (AC #2) */}
+              {/* Pagos recientes con acción "Registrar pago" (Story 9.3 AC #11) */}
               <div className="card admin-card">
                 <div className="admin-card-head">
                   <h2 className="admin-section-title">Pagos recientes</h2>
@@ -839,10 +1071,15 @@ export default function AdminFicha() {
                     type="button"
                     className="btn-primary admin-btn-action"
                     onClick={() => {
-                      setPaymentAmount('');
+                      setPaymentAmount(
+                        subscription?.final_price
+                          ? String(Math.round(Number(subscription.final_price)))
+                          : '',
+                      );
                       setPaymentRef('');
                       setPaymentStep('input');
                       setPaymentError(null);
+                      setPaymentMismatch(null);
                       setPaymentOpen(true);
                     }}
                   >
@@ -886,6 +1123,58 @@ export default function AdminFicha() {
                   </div>
                 )}
               </div>
+
+              {/* Cambios de precio (Story 9.3 AC #8) */}
+              {(() => {
+                const changes = subscription?.price_changes || ficha.price_changes || [];
+                if (!changes || changes.length === 0) return null;
+                return (
+                  <div className="card admin-card">
+                    <div className="admin-card-head">
+                      <h2 className="admin-section-title">Cambios de precio</h2>
+                    </div>
+                    <div className="admin-table-container">
+                      <table className="admin-table" aria-label="Historial de cambios de precio">
+                        <thead>
+                          <tr>
+                            <th scope="col">Fecha</th>
+                            <th scope="col">Valor del periodo</th>
+                            <th scope="col">Motivo</th>
+                            <th scope="col">Registrado por</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {changes.map((ch, idx) => {
+                            const dateStr = ch.created_at || '';
+                            const beforeVal = ch.old_final_price ?? undefined;
+                            const afterVal = ch.new_final_price ?? undefined;
+                            const adminName = ch.admin || '—';
+
+                            return (
+                              <tr key={ch.id || idx} className="admin-table-row">
+                                <td>{dateStr ? fmtBogotaDate(dateStr) : '—'}</td>
+                                <td>
+                                  {beforeVal !== undefined && afterVal !== undefined ? (
+                                    <strong>
+                                      {fmtMoney(Number(beforeVal))} → {fmtMoney(Number(afterVal))}
+                                    </strong>
+                                  ) : afterVal !== undefined ? (
+                                    <strong>{fmtMoney(Number(afterVal))}</strong>
+                                  ) : (
+                                    '—'
+                                  )}
+                                </td>
+                                <td>{ch.reason}</td>
+                                <td>{adminName}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Descargas DIAN recientes */}
               <div className="card admin-card">
@@ -1216,6 +1505,11 @@ export default function AdminFicha() {
                       <span className="field-hint" aria-live="polite">
                         Formato: {paymentAmount ? fmtMoney(Number(paymentAmount)) : '$0'}
                       </span>
+                      {subscription?.final_price && (
+                        <span className="field-hint admin-field-hint-period">
+                          Valor del periodo: {fmtMoney(Number(subscription.final_price))}
+                        </span>
+                      )}
                     </div>
 
                     <div className="field">
@@ -1247,6 +1541,57 @@ export default function AdminFicha() {
                       </button>
                     </div>
                   </form>
+                ) : paymentMismatch ? (
+                  /* Aviso 409 AMOUNT_MISMATCH (Story 9.3 AC #11) */
+                  <div className="admin-mismatch-box" role="alert">
+                    <p className="admin-mismatch-title">
+                      <strong>Aviso de diferencia de monto</strong>
+                    </p>
+                    <div className="admin-mismatch-rows">
+                      <p className="admin-mismatch-row">
+                        <span>Valor esperado: </span>
+                        <strong>{fmtMoney(Number(paymentMismatch.expected_amount))}</strong>
+                      </p>
+                      <p className="admin-mismatch-row">
+                        <span>Valor recibido: </span>
+                        <strong>{fmtMoney(Number(paymentMismatch.amount))}</strong>
+                      </p>
+                      <p className="admin-mismatch-row">
+                        <span>Diferencia: </span>
+                        <strong
+                          className={
+                            Number(paymentMismatch.difference) < 0
+                              ? 'text-danger'
+                              : 'text-success'
+                          }
+                        >
+                          {fmtMoney(Number(paymentMismatch.difference))}
+                        </strong>
+                      </p>
+                    </div>
+
+                    <div className="stack admin-dialog-actions">
+                      <button
+                        className="btn-primary"
+                        type="button"
+                        onClick={() => handlePaymentConfirm(true)}
+                        disabled={paymentBusy}
+                      >
+                        {paymentBusy ? 'Registrando…' : 'Registrar de todas formas'}
+                      </button>
+                      <button
+                        className="btn-outline"
+                        type="button"
+                        onClick={() => {
+                          setPaymentMismatch(null);
+                          setPaymentStep('input');
+                        }}
+                        disabled={paymentBusy}
+                      >
+                        Corregir monto
+                      </button>
+                    </div>
+                  </div>
                 ) : (
                   <div className="admin-confirm-box">
                     <p className="admin-confirm-text">
@@ -1262,7 +1607,7 @@ export default function AdminFicha() {
                       <button
                         className="btn-primary"
                         type="button"
-                        onClick={handlePaymentConfirm}
+                        onClick={() => handlePaymentConfirm(false)}
                         disabled={paymentBusy}
                       >
                         {paymentBusy ? 'Registrando…' : 'Confirmar'}
@@ -1277,6 +1622,203 @@ export default function AdminFicha() {
                       </button>
                     </div>
                   </div>
+                )}
+              </Dialog>
+
+              {/* Diálogo: Cambiar precio o plan (Story 9.3 AC #7) */}
+              <Dialog
+                isOpen={subChangeOpen}
+                onClose={() => setSubChangeOpen(false)}
+                title="Cambiar precio o plan de suscripción"
+                busy={subChangeBusy}
+              >
+                {subChangeError && (
+                  <p className="form-error" role="alert">
+                    {subChangeError}
+                  </p>
+                )}
+                {subscription && (
+                  <form onSubmit={handleSubChangeSubmit}>
+                    <fieldset className="admin-fieldset">
+                      <legend className="field-label">Tipo de cambio</legend>
+
+                      <div className="admin-radio-group" role="radiogroup">
+                        <label className="admin-radio-label">
+                          <input
+                            type="radio"
+                            name="sub-change-mode"
+                            value="special"
+                            checked={subChangeMode === 'special'}
+                            onChange={() => setSubChangeMode('special')}
+                            disabled={subChangeBusy}
+                          />
+                          <span>Precio especial</span>
+                        </label>
+                        <label className="admin-radio-label">
+                          <input
+                            type="radio"
+                            name="sub-change-mode"
+                            value="plan"
+                            checked={subChangeMode === 'plan'}
+                            onChange={() => setSubChangeMode('plan')}
+                            disabled={subChangeBusy}
+                          />
+                          <span>Cambiar plan</span>
+                        </label>
+                        <label className="admin-radio-label">
+                          <input
+                            type="radio"
+                            name="sub-change-mode"
+                            value="current"
+                            checked={subChangeMode === 'current'}
+                            onChange={() => setSubChangeMode('current')}
+                            disabled={subChangeBusy}
+                          />
+                          <span>Volver a la tarifa vigente</span>
+                        </label>
+                      </div>
+                    </fieldset>
+
+                    {/* Opciones según el modo */}
+                    {subChangeMode === 'special' && (
+                      <div className="admin-sub-mode-fields">
+                        <div className="field">
+                          <label className="field-label" htmlFor="sub-special-monthly">
+                            Nuevo valor mensual
+                          </label>
+                          <input
+                            id="sub-special-monthly"
+                            type="text"
+                            inputMode="numeric"
+                            className="field-input"
+                            placeholder="Ej. 70000"
+                            value={subSpecialMonthly}
+                            onChange={(e) => setSubSpecialMonthly(e.target.value.replace(/\D/g, ''))}
+                            disabled={subChangeBusy}
+                          />
+                          <span className="field-hint">
+                            Formato: {subSpecialMonthly ? fmtMoney(Number(subSpecialMonthly)) : '$0'}
+                          </span>
+                        </div>
+
+                        <div className="field">
+                          <label className="field-label" htmlFor="sub-special-discount">
+                            Nuevo descuento (%)
+                          </label>
+                          <input
+                            id="sub-special-discount"
+                            type="number"
+                            min="0"
+                            max="50"
+                            step="any"
+                            className="field-input"
+                            placeholder="Ej. 10"
+                            value={subSpecialDiscount}
+                            onChange={(e) => setSubSpecialDiscount(e.target.value)}
+                            disabled={subChangeBusy}
+                          />
+                          <span className="field-hint">Entre 0 % y 50 %</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {subChangeMode === 'plan' && (
+                      <div className="admin-sub-mode-fields">
+                        <div className="field">
+                          <label className="field-label" htmlFor="sub-select-plan">
+                            Seleccionar plan
+                          </label>
+                          <select
+                            id="sub-select-plan"
+                            className="field-input"
+                            value={subSelectedPlan}
+                            onChange={(e) => setSubSelectedPlan(e.target.value)}
+                            disabled={subChangeBusy}
+                          >
+                            {pricingPlans.length > 0 ? (
+                              pricingPlans.map((p) => (
+                                <option key={p.code} value={p.code}>
+                                  {p.name} ({p.months} meses, desc {fmtPercent(Number(p.discount_rate))} %)
+                                </option>
+                              ))
+                            ) : (
+                              <>
+                                <option value="TRIMESTRAL">Trimestral (3 meses)</option>
+                                <option value="SEMESTRAL">Semestral (6 meses)</option>
+                                <option value="ANUAL">Anual (12 meses)</option>
+                              </>
+                            )}
+                          </select>
+                        </div>
+                      </div>
+                    )}
+
+                    {subChangeMode === 'current' && (
+                      <div className="admin-sub-mode-fields">
+                        <p className="admin-muted-note">
+                          Se aplicará la tarifa vigente del segmento:{' '}
+                          <strong>
+                            {subscription.current_rate_monthly
+                              ? fmtMoney(Number(subscription.current_rate_monthly))
+                              : 'Tarifa vigente'}
+                          </strong>{' '}
+                          mensual.
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Motivo obligatorio */}
+                    <div className="field">
+                      <label className="field-label" htmlFor="sub-change-reason">
+                        Motivo del cambio (obligatorio)
+                      </label>
+                      <textarea
+                        id="sub-change-reason"
+                        className="field-input admin-textarea"
+                        rows={2}
+                        placeholder="Ej. Descuento comercial acordado por fidelidad"
+                        value={subChangeReason}
+                        onChange={(e) => setSubChangeReason(e.target.value)}
+                        disabled={subChangeBusy}
+                        required
+                      />
+                    </div>
+
+                    {/* Vista previa antes de guardar */}
+                    {(() => {
+                      const { beforeFinal, afterFinal } = computeSubPeriodPreview(
+                        subscription,
+                        pricingPlans,
+                        subChangeMode,
+                        subSpecialMonthly,
+                        subSpecialDiscount,
+                        subSelectedPlan,
+                      );
+                      return (
+                        <div className="admin-sub-preview-box" aria-live="polite">
+                          <p className="admin-sub-preview-text">
+                            Valor del periodo: <strong>{fmtMoney(beforeFinal)}</strong> →{' '}
+                            <strong className="text-accent">{fmtMoney(afterFinal)}</strong>
+                          </p>
+                          <p className="admin-muted-note">Las fechas de corte no cambian.</p>
+                        </div>
+                      );
+                    })()}
+
+                    <div className="stack admin-dialog-actions">
+                      <button type="submit" className="btn-primary" disabled={subChangeBusy}>
+                        {subChangeBusy ? 'Guardando…' : 'Guardar cambio'}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-outline"
+                        onClick={() => setSubChangeOpen(false)}
+                        disabled={subChangeBusy}
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  </form>
                 )}
               </Dialog>
 

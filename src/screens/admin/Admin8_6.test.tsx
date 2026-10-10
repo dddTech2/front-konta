@@ -303,7 +303,9 @@ describe('Story 8.6: Panel admin — crear cliente, pagos y configuración', () 
       const inputAmount = within(dialog).getByLabelText('Monto del pago');
       const inputRef = within(dialog).getByLabelText('Referencia de pago');
 
-      // Mientras teclea, se muestra el formato en pesos
+      // El campo viene prellenado con final_price (Story 9.3 AC #11)
+      expect(inputAmount).toHaveValue('270000');
+      await user.clear(inputAmount);
       await user.type(inputAmount, '270000');
       expect(within(dialog).getByText(/Formato: \$270\.000/)).toBeInTheDocument();
 
@@ -338,6 +340,7 @@ describe('Story 8.6: Panel admin — crear cliente, pagos y configuración', () 
         expect(postCall?.body).toEqual({
           amount: 270000,
           reference: 'REF-PAGO-999',
+          allow_mismatch: false,
         });
       });
 
@@ -380,7 +383,9 @@ describe('Story 8.6: Panel admin — crear cliente, pagos y configuración', () 
       await user.click(screen.getByRole('button', { name: 'Registrar pago' }));
       const dialog = screen.getByRole('dialog', { name: 'Registrar pago' });
 
-      await user.type(within(dialog).getByLabelText('Monto del pago'), '100000');
+      const amountInput = within(dialog).getByLabelText('Monto del pago');
+      await user.clear(amountInput);
+      await user.type(amountInput, '100000');
       await user.type(within(dialog).getByLabelText('Referencia de pago'), 'REF-DOUBLE');
       await user.click(within(dialog).getByRole('button', { name: 'Continuar' }));
 

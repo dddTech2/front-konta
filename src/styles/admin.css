@@ -932,8 +932,12 @@
   white-space: nowrap;
 }
 
-.admin-btn-action {
+/* Doble clase: `.btn-primary` (width: 100%) se carga después en app.css y ganaría con la misma especificidad. */
+.admin-btn-action,
+.btn-primary.admin-btn-action,
+.btn-outline.admin-btn-action {
   width: auto;
+  flex: 0 0 auto;
   padding: 6px 14px;
   font-size: 12.5px;
   border-radius: 999px;
@@ -1374,5 +1378,443 @@
   padding: 8px 12px;
   font-size: 13px;
 }
+
+/* ==========================================================================
+   Story 9.3: Estilos de Tarifas, Planes, Cotizaciones y Ficha
+   ========================================================================== */
+
+/* Aviso fijo arriba de Tarifas */
+.admin-notice-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: rgba(30, 52, 49, 0.06);
+  border-left: 4px solid var(--verde);
+  padding: 14px 16px;
+  margin-bottom: 20px;
+  border-radius: 12px;
+}
+
+.admin-notice-icon {
+  font-size: 16px;
+  color: var(--verde);
+  flex-shrink: 0;
+  line-height: 1.4;
+}
+
+.admin-notice-text {
+  margin: 0;
+  font-size: 13.5px;
+  color: var(--gris-oscuro);
+  line-height: 1.45;
+}
+
+/* Tabla 2x2 de tarifas */
+.admin-rates-table th,
+.admin-rates-table td {
+  padding: 14px 16px;
+  vertical-align: middle;
+}
+
+.admin-rate-row-header {
+  font-weight: 700;
+  color: var(--verde);
+  white-space: nowrap;
+}
+
+.admin-rate-cell-box {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.admin-rate-price {
+  font-size: 16px;
+  color: var(--verde);
+}
+
+.admin-rate-date {
+  font-size: 12px;
+  color: var(--gris-medio);
+}
+
+.admin-rate-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.admin-btn-rate-change {
+  font-size: 12.5px;
+  font-weight: 700;
+  padding: 0;
+}
+
+.admin-btn-rate-history {
+  font-size: 12.5px;
+  color: var(--gris-medio);
+  padding: 0;
+}
+
+.admin-btn-rate-history:hover {
+  color: var(--verde);
+}
+
+/* Tarifas móvil */
+.admin-rate-mobile-card {
+  background: var(--blanco);
+  border: 1px solid #e7e5df;
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.admin-rate-mobile-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.admin-rate-mobile-title {
+  font-size: 14px;
+  color: var(--verde);
+}
+
+.admin-rate-mobile-body {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+/* Tarifas programadas */
+.admin-scheduled-section {
+  margin-top: 24px;
+  border-top: 1px solid #efede7;
+  padding-top: 16px;
+}
+
+/* Planes y descuentos */
+.admin-plans-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.admin-plan-row-container {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  background: #fbfbfa;
+  border: 1px solid #eceae4;
+  border-radius: 12px;
+}
+
+.admin-plan-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.admin-plan-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.admin-plan-name {
+  flex: 2;
+  min-width: 140px;
+}
+
+.admin-plan-months {
+  flex: 1;
+  min-width: 90px;
+}
+
+.admin-plan-discount {
+  flex: 1;
+  min-width: 90px;
+}
+
+.admin-plan-active {
+  display: flex;
+  align-items: center;
+  padding-bottom: 10px;
+}
+
+.admin-plan-save {
+  padding-bottom: 2px;
+}
+
+.admin-readonly-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 12px;
+  background: var(--gris-claro);
+  border-radius: 8px;
+  font-size: 13.5px;
+  color: var(--gris-oscuro);
+  font-weight: 600;
+}
+
+.admin-plan-row-error {
+  margin: 0;
+  font-size: 12.5px;
+}
+
+/* Periodo de gracia */
+.admin-grace-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.admin-grace-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.admin-grace-field {
+  max-width: 260px;
+  margin-bottom: 0;
+}
+
+.admin-muted-note {
+  font-size: 12.5px;
+  color: var(--gris-medio);
+  margin: 0;
+}
+
+.admin-muted-warn {
+  color: var(--terracota-dark);
+}
+
+.admin-success-hint {
+  font-size: 13px;
+  color: var(--verde-tint);
+  font-weight: 600;
+  margin: 0;
+}
+
+/* Cotizaciones */
+.admin-pill-savings {
+  display: inline-block;
+  background: #e6f4ea;
+  color: #137333;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 999px;
+}
+
+.admin-quote-seg-block {
+  margin-bottom: 16px;
+}
+
+.admin-quote-seg-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--verde);
+  margin: 0 0 8px;
+}
+
+.admin-quote-seg-items {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.admin-quote-seg-card {
+  background: var(--blanco);
+  border: 1px solid #e7e5df;
+  border-radius: 10px;
+  padding: 10px 14px;
+}
+
+.admin-quote-seg-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.admin-quote-seg-details {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12.5px;
+  color: var(--gris-medio);
+}
+
+/* Cotización en Nuevo Cliente */
+.admin-quote-preview {
+  background: rgba(30, 52, 49, 0.05);
+  border: 1px solid rgba(30, 52, 49, 0.12);
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-bottom: 16px;
+}
+
+.admin-quote-text {
+  margin: 0;
+  font-size: 13px;
+  color: var(--gris-oscuro);
+}
+
+.admin-quote-loading {
+  font-size: 12.5px;
+  margin-bottom: 14px;
+}
+
+.admin-quote-error {
+  margin-bottom: 14px;
+}
+
+/* Éxito en Nuevo Cliente */
+.admin-success-sub-details {
+  background: var(--gris-claro);
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin-bottom: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.admin-success-sub-item {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13.5px;
+}
+
+/* Ficha del cliente: Suscripción y Mismatch de pagos */
+.admin-sub-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.admin-sub-hint-rate {
+  font-size: 11.5px;
+  color: var(--gris-medio);
+  display: block;
+  margin-top: 2px;
+}
+
+.admin-sub-price-note {
+  font-size: 11.5px;
+  color: var(--gris-medio);
+  margin: 2px 0 0;
+  font-style: italic;
+}
+
+.admin-field-hint-period {
+  display: block;
+  font-weight: 600;
+  color: var(--verde);
+  margin-top: 2px;
+}
+
+.admin-mismatch-box {
+  background: #fff8f6;
+  border: 1px solid #f9d2cb;
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+}
+
+.admin-mismatch-title {
+  color: var(--terracota-dark);
+  font-size: 14px;
+  margin: 0 0 10px;
+}
+
+.admin-mismatch-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.admin-mismatch-row {
+  display: flex;
+  justify-content: space-between;
+  margin: 0;
+  font-size: 13.5px;
+}
+
+.text-danger {
+  color: var(--terracota-dark);
+}
+
+.text-success {
+  color: #137333;
+}
+
+/* Diálogo: Cambiar suscripción */
+.admin-fieldset {
+  border: none;
+  padding: 0;
+  margin: 0 0 16px;
+}
+
+.admin-radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.admin-radio-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13.5px;
+  cursor: pointer;
+}
+
+.admin-sub-mode-fields {
+  margin-bottom: 14px;
+  padding: 12px;
+  background: #fbfbfa;
+  border-radius: 10px;
+}
+
+.admin-sub-preview-box {
+  background: rgba(30, 52, 49, 0.05);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin: 14px 0;
+}
+
+.admin-sub-preview-text {
+  margin: 0 0 4px;
+  font-size: 13.5px;
+}
+
+@media (max-width: 400px) {
+  .admin-plan-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .admin-plan-name,
+  .admin-plan-months,
+  .admin-plan-discount {
+    min-width: 100%;
+  }
+
+  .admin-mismatch-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
 
 
