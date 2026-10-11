@@ -382,7 +382,7 @@ describe('Story 8.7: Panel admin — documentos y operación DIAN', () => {
       });
 
       // Las extracciones recientes muestran la nueva
-      expect(screen.getByText('En cola')).toBeInTheDocument();
+      expect(screen.getAllByText('En cola')[0]).toBeInTheDocument();
     });
 
     it('opción Últimos N meses: envía months=N y confirma correctamente', async () => {

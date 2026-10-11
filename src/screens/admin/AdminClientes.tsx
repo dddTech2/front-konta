@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
-import { Link, useLocation, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { getAdminClients } from '../../api/adminEndpoints';
 import type { AdminClientListItem } from '../../api/adminTypes';
 import { Icon } from '../../components/Icon';
+import { IconChevronRight } from '../../components/icons';
 import { ResourceView } from '../../components/ScreenState';
 import { fmtBogotaDate, fmtNit } from '../../format';
 import { useResource } from '../../hooks/useResource';
+import { incomeSourceLabel, planLabel } from './labels';
 
 const SEARCH_DEBOUNCE_MS = 300;
 const PAGE_SIZE = 20;
@@ -21,8 +23,8 @@ const STATUS_OPTIONS: Array<{ label: string; value: string }> = [
 
 const TIPO_OPTIONS: Array<{ label: string; value: string }> = [
   { label: 'Todos los tipos', value: '' },
-  { label: 'DIAN', value: 'DIAN' },
-  { label: 'Ventas manuales', value: 'MANUAL_SALES' },
+  { label: incomeSourceLabel('DIAN'), value: 'DIAN' },
+  { label: incomeSourceLabel('MANUAL_SALES'), value: 'MANUAL_SALES' },
 ];
 
 function statusBadge(status?: string | null) {
@@ -51,14 +53,14 @@ function statusBadge(status?: string | null) {
 }
 
 function tipoLabel(tipo?: string | null) {
-  if (tipo === 'MANUAL_SALES') return 'Ventas manuales';
-  if (tipo === 'DIAN') return 'DIAN';
-  return tipo || '—';
+  if (!tipo) return '—';
+  return incomeSourceLabel(tipo);
 }
 
 export default function AdminClientes() {
   const [searchParams, setSearchParams] = useSearchParams();
   const location = useLocation();
+  const navigate = useNavigate();
 
   const urlQ = searchParams.get('q') || '';
   const urlStatus = searchParams.get('status') || '';
@@ -133,11 +135,13 @@ export default function AdminClientes() {
 
   return (
     <section aria-label="Clientes" className="screen admin-screen">
-      <div className="admin-screen-head">
-        <h1 className="screen-title">Clientes</h1>
-        <Link to="/admin/clientes/nuevo" className="btn-primary admin-btn-nuevo">
-          Nuevo cliente
-        </Link>
+      <div className="admin-page-head">
+        <h1 className="admin-page-title">Clientes</h1>
+        <div className="admin-page-action">
+          <Link to="/admin/clientes/nuevo" className="btn-primary admin-btn-nuevo">
+            Nuevo cliente
+          </Link>
+        </div>
       </div>
 
       {/* Buscador con icono */}
@@ -227,11 +231,21 @@ export default function AdminClientes() {
                           <th scope="col">Estado</th>
                           <th scope="col">Corte</th>
                           <th scope="col">Telegram</th>
+                          <th scope="col" aria-hidden="true" className="admin-th-chevron" />
                         </tr>
                       </thead>
                       <tbody>
                         {res.items.map((client: AdminClientListItem) => (
-                          <tr key={client.business_id} className="admin-table-row">
+                          <tr
+                            key={client.business_id}
+                            className="admin-table-row"
+                            onClick={(e) => {
+                              if ((e.target as HTMLElement).closest('a')) return;
+                              navigate(`/admin/clientes/${client.business_id}`, {
+                                state: { from: location.search },
+                              });
+                            }}
+                          >
                             <td className="admin-td-business">
                               <Link
                                 to={`/admin/clientes/${client.business_id}`}
@@ -244,17 +258,20 @@ export default function AdminClientes() {
                                 )}
                               </Link>
                             </td>
-                            <td>{fmtNit(client.nit, client.dv)}</td>
+                            <td><span className="admin-nowrap">{fmtNit(client.nit, client.dv)}</span></td>
                             <td>{tipoLabel(client.income_source)}</td>
-                            <td>{client.plan || '—'}</td>
+                            <td>{planLabel(client.plan)}</td>
                             <td>{statusBadge(client.subscription_status)}</td>
-                            <td>{client.cutoff_date ? fmtBogotaDate(client.cutoff_date) : '—'}</td>
+                            <td><span className="admin-nowrap">{client.cutoff_date ? fmtBogotaDate(client.cutoff_date) : '—'}</span></td>
                             <td>
                               <span
                                 className={`admin-pill-telegram ${client.is_telegram_linked ? 'linked' : 'unlinked'}`}
                               >
                                 {client.is_telegram_linked ? 'Vinculado' : 'Sin vincular'}
                               </span>
+                            </td>
+                            <td className="admin-td-chevron" aria-hidden="true">
+                              <IconChevronRight size={18} />
                             </td>
                           </tr>
                         ))}
@@ -284,11 +301,11 @@ export default function AdminClientes() {
                             <span className="admin-meta-label">Tipo:</span> {tipoLabel(client.income_source)}
                           </span>
                           <span className="admin-meta-item">
-                            <span className="admin-meta-label">Plan:</span> {client.plan || '—'}
+                            <span className="admin-meta-label">Plan:</span> {planLabel(client.plan)}
                           </span>
                           <span className="admin-meta-item">
                             <span className="admin-meta-label">Corte:</span>{' '}
-                            {client.cutoff_date ? fmtBogotaDate(client.cutoff_date) : '—'}
+                            <span className="admin-nowrap">{client.cutoff_date ? fmtBogotaDate(client.cutoff_date) : '—'}</span>
                           </span>
                         </div>
 
@@ -298,7 +315,9 @@ export default function AdminClientes() {
                           >
                             Telegram: {client.is_telegram_linked ? 'Vinculado' : 'Sin vincular'}
                           </span>
-                          <span className="admin-arrow-indicator">Ver ficha →</span>
+                          <span className="admin-arrow-indicator" aria-hidden="true">
+                            Ver ficha <IconChevronRight size={16} />
+                          </span>
                         </div>
                       </Link>
                     ))}

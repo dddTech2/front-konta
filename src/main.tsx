@@ -5,6 +5,7 @@ import { ROUTER_FUTURE } from './routerFuture';
 import App from './App';
 import { AuthProvider } from './auth/AuthContext';
 import './styles/app.css';
+import './styles/admin.css';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

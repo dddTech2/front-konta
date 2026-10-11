@@ -514,9 +514,9 @@ describe('Story 9.3: Panel web — Tarifas, precio del cliente y aviso de monto'
       renderApp('/admin/clientes/biz-1');
 
       expect(await screen.findByRole('heading', { name: 'Cambios de precio' })).toBeInTheDocument();
-      expect(screen.getByText(/Descuento trimestral inicial/)).toBeInTheDocument();
-      expect(screen.getByText('Katerinn')).toBeInTheDocument();
-      expect(screen.getByText(/\$300\.000 → \$270\.000/)).toBeInTheDocument();
+      expect(screen.getAllByText(/Descuento trimestral inicial/)[0]).toBeInTheDocument();
+      expect(screen.getAllByText('Katerinn')[0]).toBeInTheDocument();
+      expect(screen.getAllByText(/\$300\.000 → \$270\.000/)[0]).toBeInTheDocument();
     });
 
     it('historial de cambios de precio se oculta si la lista está vacía (AC #8)', async () => {

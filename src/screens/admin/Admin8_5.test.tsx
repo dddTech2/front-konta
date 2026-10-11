@@ -47,7 +47,7 @@ describe('Story 8.5: Panel admin en la SPA — Resumen, lista de clientes y fich
 
       // Clientes por tipo
       const statRow = (label: string) => screen.getByText(label).closest('.admin-stat-row');
-      expect(statRow('DIAN')).toHaveTextContent('20');
+      expect(statRow('Facturador DIAN')).toHaveTextContent('20');
       expect(statRow('Ventas manuales')).toHaveTextContent('5');
 
       // Pagos del mes (cantidad y total formateado)
@@ -95,6 +95,33 @@ describe('Story 8.5: Panel admin en la SPA — Resumen, lista de clientes y fich
 
       expect(await screen.findByText('Worker en alerta')).toBeInTheDocument();
       expect(screen.getByText('(última señal hace 51 min)')).toBeInTheDocument();
+    });
+
+    it('resumen muestra tiempo formateado con timeAgo cuando minutos es elevado ("hace 3 días", AC #17)', async () => {
+      const summaryAntiguo = {
+        ...ADMIN_SUMMARY,
+        worker: {
+          silence_threshold_minutes: 15,
+          workers: [
+            {
+              name: 'worker-primary',
+              last_seen_at: '2026-10-04T00:00:00',
+              minutes_since: 5221,
+              is_silent: true,
+            },
+          ],
+        },
+      };
+
+      mockApi({
+        'GET /api/auth/me': { body: ME_ADMIN },
+        'GET /api/admin/summary': { body: summaryAntiguo },
+      });
+
+      renderApp('/admin');
+
+      expect(await screen.findByText('Worker en alerta')).toBeInTheDocument();
+      expect(screen.getByText('(última señal hace 3 días)')).toBeInTheDocument();
     });
   });
 
@@ -238,6 +265,27 @@ describe('Story 8.5: Panel admin en la SPA — Resumen, lista de clientes y fich
         expect(pageCalls.length).toBeGreaterThan(0);
       });
     });
+
+    it('clic en cualquier parte de la fila de la tabla navega a la ficha del cliente (AC #14, #17)', async () => {
+      const user = userEvent.setup();
+      mockApi({
+        'GET /api/auth/me': { body: ME_ADMIN },
+        'GET /api/admin/clients': { body: ADMIN_CLIENTS },
+        'GET /api/admin/clients/biz-1': { body: ADMIN_CLIENT_DETAIL },
+        'GET /api/admin/clients/biz-1/documents': { body: ADMIN_DOCUMENTS },
+      });
+
+      renderApp('/admin/clientes');
+
+      await screen.findByRole('heading', { name: 'Clientes' });
+      const table = screen.getByRole('table', { name: 'Lista de clientes' });
+      const rows = within(table).getAllByRole('row');
+      const firstRow = rows[1];
+      const nitCell = within(firstRow).getByText('900.123.456-7');
+      await user.click(nitCell);
+
+      expect(await screen.findByRole('heading', { name: 'Panadería La Espiga' })).toBeInTheDocument();
+    });
   });
 
   describe('Ficha del cliente (/admin/clientes/:businessId)', () => {
@@ -275,20 +323,20 @@ describe('Story 8.5: Panel admin en la SPA — Resumen, lista de clientes y fich
 
       // Suscripción
       expect(screen.getByRole('heading', { name: 'Suscripción' })).toBeInTheDocument();
-      expect(screen.getByText('TRIMESTRAL')).toBeInTheDocument();
+      expect(screen.getByText('Trimestral')).toBeInTheDocument();
       expect(screen.getByText('$300.000')).toBeInTheDocument();
       expect(screen.getByText('10 %')).toBeInTheDocument();
       expect(screen.getAllByText('$270.000').length).toBeGreaterThanOrEqual(2);
 
       // Pagos
       expect(screen.getByRole('heading', { name: 'Pagos recientes' })).toBeInTheDocument();
-      expect(screen.getByText('REF-778899')).toBeInTheDocument();
-      expect(screen.getByText('TRANSFERENCIA')).toBeInTheDocument();
+      expect(screen.getAllByText('REF-778899')[0]).toBeInTheDocument();
+      expect(screen.getAllByText('Transferencia')[0]).toBeInTheDocument();
 
       // Descargas DIAN
       expect(screen.getByRole('heading', { name: 'Descargas DIAN recientes' })).toBeInTheDocument();
-      expect(screen.getByText('Agosto 2026')).toBeInTheDocument();
-      expect(screen.getByText('Exitosa')).toBeInTheDocument();
+      expect(screen.getAllByText('Agosto 2026')[0]).toBeInTheDocument();
+      expect(screen.getAllByText('Exitosa')[0]).toBeInTheDocument();
 
       // Documentos
       expect(screen.getByRole('heading', { name: 'Documentos' })).toBeInTheDocument();

@@ -350,7 +350,7 @@ describe('Story 8.6: Panel admin — crear cliente, pagos y configuración', () 
       });
 
       // La ficha se recargó y muestra la nueva fecha de corte y el nuevo pago
-      expect(await screen.findByText('REF-PAGO-999')).toBeInTheDocument();
+      expect((await screen.findAllByText('REF-PAGO-999'))[0]).toBeInTheDocument();
       expect(screen.getByText('12 ene 2027')).toBeInTheDocument();
     });
 

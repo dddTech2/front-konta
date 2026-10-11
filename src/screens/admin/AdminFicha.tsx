@@ -23,6 +23,7 @@ import type {
 } from '../../api/adminTypes';
 import { ApiError, NETWORK_ERROR_MESSAGE } from '../../api/client';
 import Dialog from '../../components/Dialog';
+import { IconDocument, IconPaperclip } from '../../components/icons';
 import { ResourceView } from '../../components/ScreenState';
 import { clientWhatsappUrl } from '../../config';
 import {
@@ -44,6 +45,7 @@ import {
   recentMonths,
 } from '../../format';
 import { useResource } from '../../hooks/useResource';
+import { incomeSourceLabel, paymentMethodLabel, planLabel } from './labels';
 
 function statusBadge(status?: string | null) {
   const s = (status || '').toUpperCase();
@@ -71,9 +73,8 @@ function statusBadge(status?: string | null) {
 }
 
 function tipoLabel(tipo?: string | null) {
-  if (tipo === 'MANUAL_SALES') return 'Ventas manuales';
-  if (tipo === 'DIAN') return 'DIAN';
-  return tipo || '—';
+  if (!tipo) return '—';
+  return incomeSourceLabel(tipo);
 }
 
 function personaLabel(taxpayerType?: string | null) {
@@ -82,19 +83,19 @@ function personaLabel(taxpayerType?: string | null) {
   return taxpayerType || '—';
 }
 
-function formatExtractionError(errorCode?: string | null): string {
-  if (!errorCode) return 'Sin errores';
+function friendlyExtractionError(errorCode?: string | null): { text: string; code?: string } {
+  if (!errorCode) return { text: 'Sin errores' };
   switch (errorCode) {
     case 'DIAN_SLOW_RESPONSE':
-      return 'Respuesta lenta de la DIAN';
+      return { text: 'Respuesta lenta de la DIAN', code: errorCode };
     case 'DIAN_PORTAL_UNAVAILABLE':
-      return 'Portal de la DIAN no disponible';
+      return { text: 'Portal de la DIAN no disponible', code: errorCode };
     case 'CERTIFICATE_EXPIRED':
-      return 'Certificado digital vencido';
+      return { text: 'Certificado digital vencido', code: errorCode };
     case 'CREDENTIALS_INVALID':
-      return 'Credenciales de acceso inválidas';
+      return { text: 'Credenciales de acceso inválidas', code: errorCode };
     default:
-      return `Error en la descarga (${errorCode})`;
+      return { text: 'Error en la descarga', code: errorCode };
   }
 }
 
@@ -803,7 +804,7 @@ export default function AdminFicha() {
                 <div className="admin-ficha-header-meta">
                   <div className="admin-meta-col">
                     <span className="admin-meta-label">NIT</span>
-                    <strong className="admin-meta-value">{fmtNit(business.nit, business.dv)}</strong>
+                    <strong className="admin-meta-value admin-nowrap">{fmtNit(business.nit, business.dv)}</strong>
                   </div>
                   <div className="admin-meta-col">
                     <span className="admin-meta-label">Origen de ingresos</span>
@@ -811,7 +812,7 @@ export default function AdminFicha() {
                       <strong className="admin-meta-value">{tipoLabel(business.income_source)}</strong>
                       <button
                         type="button"
-                        className="btn-link admin-btn-inline-action"
+                        className="btn-link admin-btn-sm admin-btn-inline-action"
                         onClick={() => {
                           setSelectedIncomeSource(business.income_source as AdminIncomeSource);
                           setIncomeSourceError(null);
@@ -821,10 +822,6 @@ export default function AdminFicha() {
                         Cambiar
                       </button>
                     </div>
-                  </div>
-                  <div className="admin-meta-col">
-                    <span className="admin-meta-label">ID del negocio</span>
-                    <code className="admin-code-id">{business.id}</code>
                   </div>
                 </div>
               </div>
@@ -928,7 +925,7 @@ export default function AdminFicha() {
                       <h2 className="admin-section-title">Perfil tributario</h2>
                       <button
                         type="button"
-                        className="btn-link admin-btn-inline-action"
+                        className="btn-link admin-btn-sm admin-btn-inline-action"
                         onClick={() => {
                           setIvaPeriodicity(tax_profile.iva_periodicity || '');
                           setIsWithholding(Boolean(tax_profile.is_withholding_agent));
@@ -991,7 +988,7 @@ export default function AdminFicha() {
                   <div className="admin-sub-grid">
                     <div className="admin-sub-item">
                       <span className="admin-meta-label">Plan</span>
-                      <strong className="admin-sub-value">{subscription.plan}</strong>
+                      <strong className="admin-sub-value">{planLabel(subscription.plan, pricingPlans)}</strong>
                     </div>
                     <div className="admin-sub-item">
                       <span className="admin-meta-label">Valor mensual</span>
@@ -1069,7 +1066,7 @@ export default function AdminFicha() {
                   <h2 className="admin-section-title">Pagos recientes</h2>
                   <button
                     type="button"
-                    className="btn-primary admin-btn-action"
+                    className="btn-primary admin-btn-sm"
                     onClick={() => {
                       setPaymentAmount(
                         subscription?.final_price
@@ -1089,38 +1086,76 @@ export default function AdminFicha() {
                 {recent_payments.length === 0 ? (
                   <p className="admin-empty-text">No hay pagos registrados.</p>
                 ) : (
-                  <div className="admin-table-container">
-                    <table className="admin-table" aria-label="Historial de pagos">
-                      <thead>
-                        <tr>
-                          <th scope="col">Fecha</th>
-                          <th scope="col">Monto</th>
-                          <th scope="col">Referencia</th>
-                          <th scope="col">Método</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {recent_payments.map((p) => (
-                          <tr key={p.id} className="admin-table-row">
-                            <td>
-                              {p.payment_date
-                                ? fmtDeadline(p.payment_date)
-                                : p.created_at
-                                  ? fmtBogotaDate(p.created_at)
-                                  : '—'}
-                            </td>
-                            <td>
-                              <strong>{fmtMoney(Number(p.amount))}</strong>
-                            </td>
-                            <td>
-                              <code>{p.reference_code || '—'}</code>
-                            </td>
-                            <td>{p.payment_method || 'TRANSFERENCIA'}</td>
+                  <>
+                    <div className="admin-table-container admin-desktop-only">
+                      <table className="admin-table" aria-label="Historial de pagos">
+                        <thead>
+                          <tr>
+                            <th scope="col">Fecha</th>
+                            <th scope="col">Monto</th>
+                            <th scope="col">Referencia</th>
+                            <th scope="col">Método</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                        </thead>
+                        <tbody>
+                          {recent_payments.map((p) => (
+                            <tr key={p.id} className="admin-table-row">
+                              <td>
+                                <span className="admin-nowrap">
+                                  {p.payment_date
+                                    ? fmtDeadline(p.payment_date)
+                                    : p.created_at
+                                      ? fmtBogotaDate(p.created_at)
+                                      : '—'}
+                                </span>
+                              </td>
+                              <td>
+                                <strong className="admin-nowrap">{fmtMoney(Number(p.amount))}</strong>
+                              </td>
+                              <td>
+                                <code>{p.reference_code || '—'}</code>
+                              </td>
+                              <td>{paymentMethodLabel(p.payment_method)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    <div className="admin-mobile-only" style={{ gap: '10px' }}>
+                      {recent_payments.map((p) => {
+                        const dateText = p.payment_date
+                          ? fmtDeadline(p.payment_date)
+                          : p.created_at
+                            ? fmtBogotaDate(p.created_at)
+                            : '—';
+                        return (
+                          <div key={p.id} className="admin-ficha-card">
+                            <div className="admin-ficha-card-top">
+                              <span className="admin-ficha-card-main admin-nowrap">
+                                {fmtMoney(Number(p.amount))}
+                              </span>
+                              <span className="admin-ficha-card-sub admin-nowrap">{dateText}</span>
+                            </div>
+                            <div className="admin-ficha-card-meta">
+                              <div className="admin-ficha-card-row">
+                                <span className="admin-ficha-card-label">Referencia</span>
+                                <span className="admin-ficha-card-val">
+                                <code>{p.reference_code || '—'}</code>
+                                </span>
+                              </div>
+                              <div className="admin-ficha-card-row">
+                                <span className="admin-ficha-card-label">Método</span>
+                                <span className="admin-ficha-card-val">
+                                  {paymentMethodLabel(p.payment_method)}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
                 )}
               </div>
 
@@ -1133,7 +1168,7 @@ export default function AdminFicha() {
                     <div className="admin-card-head">
                       <h2 className="admin-section-title">Cambios de precio</h2>
                     </div>
-                    <div className="admin-table-container">
+                    <div className="admin-table-container admin-desktop-only">
                       <table className="admin-table" aria-label="Historial de cambios de precio">
                         <thead>
                           <tr>
@@ -1152,14 +1187,16 @@ export default function AdminFicha() {
 
                             return (
                               <tr key={ch.id || idx} className="admin-table-row">
-                                <td>{dateStr ? fmtBogotaDate(dateStr) : '—'}</td>
+                                <td>
+                                  <span className="admin-nowrap">{dateStr ? fmtBogotaDate(dateStr) : '—'}</span>
+                                </td>
                                 <td>
                                   {beforeVal !== undefined && afterVal !== undefined ? (
-                                    <strong>
+                                    <strong className="admin-nowrap">
                                       {fmtMoney(Number(beforeVal))} → {fmtMoney(Number(afterVal))}
                                     </strong>
                                   ) : afterVal !== undefined ? (
-                                    <strong>{fmtMoney(Number(afterVal))}</strong>
+                                    <strong className="admin-nowrap">{fmtMoney(Number(afterVal))}</strong>
                                   ) : (
                                     '—'
                                   )}
@@ -1172,6 +1209,44 @@ export default function AdminFicha() {
                         </tbody>
                       </table>
                     </div>
+
+                    <div className="admin-mobile-only" style={{ gap: '10px' }}>
+                      {changes.map((ch, idx) => {
+                        const dateStr = ch.created_at ? fmtBogotaDate(ch.created_at) : '—';
+                        const beforeVal = ch.old_final_price ?? undefined;
+                        const afterVal = ch.new_final_price ?? undefined;
+                        const adminName = ch.admin || '—';
+
+                        return (
+                          <div key={ch.id || idx} className="admin-ficha-card">
+                            <div className="admin-ficha-card-top">
+                              <span className="admin-ficha-card-main">
+                                {beforeVal !== undefined && afterVal !== undefined ? (
+                                  <span className="admin-nowrap">
+                                    {fmtMoney(Number(beforeVal))} → {fmtMoney(Number(afterVal))}
+                                  </span>
+                                ) : afterVal !== undefined ? (
+                                  <span className="admin-nowrap">{fmtMoney(Number(afterVal))}</span>
+                                ) : (
+                                  '—'
+                                )}
+                              </span>
+                              <span className="admin-ficha-card-sub admin-nowrap">{dateStr}</span>
+                            </div>
+                            <div className="admin-ficha-card-meta">
+                              <div className="admin-ficha-card-row">
+                                <span className="admin-ficha-card-label">Motivo</span>
+                                <span className="admin-ficha-card-val">{ch.reason}</span>
+                              </div>
+                              <div className="admin-ficha-card-row">
+                                <span className="admin-ficha-card-label">Registrado por</span>
+                                <span className="admin-ficha-card-val">{adminName}</span>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 );
               })()}
@@ -1182,7 +1257,7 @@ export default function AdminFicha() {
                   <h2 className="admin-section-title">Descargas DIAN recientes</h2>
                   <button
                     type="button"
-                    className="btn-primary admin-btn-action"
+                    className="btn-primary admin-btn-sm"
                     onClick={handleOpenExtraction}
                   >
                     Descargar de la DIAN
@@ -1191,42 +1266,99 @@ export default function AdminFicha() {
                 {recent_extractions.length === 0 ? (
                   <p className="admin-empty-text">No hay descargas DIAN registradas.</p>
                 ) : (
-                  <div className="admin-table-container">
-                    <table className="admin-table" aria-label="Historial de extracciones DIAN">
-                      <thead>
-                        <tr>
-                          <th scope="col">Periodo</th>
-                          <th scope="col">Estado</th>
-                          <th scope="col">Intentos</th>
-                          <th scope="col">Detalle / Error</th>
-                          <th scope="col">Fecha finalización</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {recent_extractions.map((ext) => (
-                          <tr key={ext.id} className="admin-table-row">
-                            <td>{fmtPeriod(ext.period)}</td>
-                            <td>
+                  <>
+                    <div className="admin-table-container admin-desktop-only">
+                      <table className="admin-table" aria-label="Historial de extracciones DIAN">
+                        <thead>
+                          <tr>
+                            <th scope="col">Periodo</th>
+                            <th scope="col">Estado</th>
+                            <th scope="col">Intentos</th>
+                            <th scope="col">Detalle / Error</th>
+                            <th scope="col">Fecha finalización</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {recent_extractions.map((ext) => {
+                            const err = friendlyExtractionError(ext.error_code);
+                            return (
+                              <tr key={ext.id} className="admin-table-row">
+                                <td>{fmtPeriod(ext.period)}</td>
+                                <td>
+                                  <span
+                                    className={`admin-pill-status status-${jobStatus(ext.status).tone}`}
+                                  >
+                                    {jobStatus(ext.status).label}
+                                  </span>
+                                </td>
+                                <td>{ext.attempts}</td>
+                                <td>
+                                  <span
+                                    title={err.code || undefined}
+                                    className={ext.error_code ? 'text-alert' : ''}
+                                  >
+                                    {err.text}
+                                  </span>
+                                </td>
+                                <td>
+                                  <span className="admin-nowrap">
+                                    {ext.finished_at
+                                      ? fmtBogotaDate(ext.finished_at)
+                                      : ext.next_run_at
+                                        ? `Próx: ${fmtBogotaDate(ext.next_run_at)}`
+                                        : '—'}
+                                  </span>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    <div className="admin-mobile-only" style={{ gap: '10px' }}>
+                      {recent_extractions.map((ext) => {
+                        const err = friendlyExtractionError(ext.error_code);
+                        const finalDate = ext.finished_at
+                          ? fmtBogotaDate(ext.finished_at)
+                          : ext.next_run_at
+                            ? `Próx: ${fmtBogotaDate(ext.next_run_at)}`
+                            : '—';
+
+                        return (
+                          <div key={ext.id} className="admin-ficha-card">
+                            <div className="admin-ficha-card-top">
+                              <strong className="admin-ficha-card-main">{fmtPeriod(ext.period)}</strong>
                               <span
                                 className={`admin-pill-status status-${jobStatus(ext.status).tone}`}
                               >
                                 {jobStatus(ext.status).label}
                               </span>
-                            </td>
-                            <td>{ext.attempts}</td>
-                            <td>{formatExtractionError(ext.error_code)}</td>
-                            <td>
-                              {ext.finished_at
-                                ? fmtBogotaDate(ext.finished_at)
-                                : ext.next_run_at
-                                  ? `Próx: ${fmtBogotaDate(ext.next_run_at)}`
-                                  : '—'}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                            </div>
+                            <div className="admin-ficha-card-meta">
+                              <div className="admin-ficha-card-row">
+                                <span className="admin-ficha-card-label">Intentos</span>
+                                <span className="admin-ficha-card-val">{ext.attempts}</span>
+                              </div>
+                              <div className="admin-ficha-card-row">
+                                <span className="admin-ficha-card-label">Detalle / error</span>
+                                <span
+                                  title={err.code || undefined}
+                                  className={`admin-ficha-card-val ${ext.error_code ? 'text-alert' : ''}`}
+                                >
+                                  {err.text}
+                                </span>
+                              </div>
+                              <div className="admin-ficha-card-row">
+                                <span className="admin-ficha-card-label">Finalización</span>
+                                <span className="admin-ficha-card-val admin-nowrap">{finalDate}</span>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
                 )}
               </div>
 
@@ -1374,7 +1506,7 @@ export default function AdminFicha() {
                           onDrop={handleDrop}
                         >
                           <span className="admin-dropzone-icon" aria-hidden="true">
-                            📄
+                            <IconDocument size={32} />
                           </span>
                           <p className="admin-dropzone-text">
                             Arrastra y suelta un archivo aquí o haz clic en Elegir archivo
@@ -1400,8 +1532,8 @@ export default function AdminFicha() {
 
                           {uploadFile && (
                             <div className="admin-selected-file-badge">
-                              <span>
-                                📎 {uploadFile.name} ({fmtFileSize(uploadFile.size)})
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                                <IconPaperclip size={16} /> {uploadFile.name} ({fmtFileSize(uploadFile.size)})
                               </span>
                               <button
                                 type="button"

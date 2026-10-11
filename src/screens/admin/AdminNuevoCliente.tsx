@@ -12,6 +12,7 @@ import type {
 } from '../../api/adminTypes';
 import { ApiError, NETWORK_ERROR_MESSAGE } from '../../api/client';
 import { clientWhatsappUrl } from '../../config';
+import { IconCheck } from '../../components/icons';
 import { fmtDeadline, fmtMoney, fmtPercent } from '../../format';
 
 export default function AdminNuevoCliente() {
@@ -229,7 +230,7 @@ export default function AdminNuevoCliente() {
 
         <div className="card admin-success-card" role="status">
           <div className="admin-success-head">
-            <span className="admin-success-icon" aria-hidden="true">✓</span>
+            <span className="admin-success-icon" aria-hidden="true"><IconCheck size={28} /></span>
             <h1 className="h-title admin-success-title">Cliente creado exitosamente</h1>
             <p className="lead">
               El cliente fue registrado en el sistema. Comparte el enlace de activación para que vincule su cuenta de Telegram.

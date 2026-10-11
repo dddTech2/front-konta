@@ -2,9 +2,11 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { getAdminJobs, getAdminWorkerStatus } from '../../api/adminEndpoints';
 import type { AdminJobItem, AdminJobsListResponse, AdminWorkerStatusResponse } from '../../api/adminTypes';
+import { IconRefresh } from '../../components/icons';
 import { ResourceView } from '../../components/ScreenState';
 import { capitalize, fmtBogotaDate, fmtNit, fmtPeriod, jobStatus } from '../../format';
 import { useResource } from '../../hooks/useResource';
+import { timeAgo } from './labels';
 
 const PAGE_SIZE = 20;
 
@@ -104,17 +106,20 @@ export default function AdminOperacion() {
 
   return (
     <section aria-label="Operación" className="screen admin-screen admin-operacion-screen">
-      <div className="admin-operacion-head">
-        <h1 className="screen-title">Operación</h1>
-        <button
-          type="button"
-          className="btn-outline admin-btn-action admin-operacion-refresh"
-          onClick={handleRefresh}
-          disabled={refreshing}
-          aria-label="Actualizar estado de la operación"
-        >
-          {refreshing ? 'Actualizando…' : 'Actualizar'}
-        </button>
+      <div className="admin-page-head">
+        <h1 className="admin-page-title">Operación</h1>
+        <div className="admin-page-action">
+          <button
+            type="button"
+            className="btn-outline admin-btn-sm admin-operacion-refresh"
+            onClick={handleRefresh}
+            disabled={refreshing}
+            aria-label="Actualizar estado de la operación"
+          >
+            <IconRefresh size={16} />
+            {refreshing ? 'Actualizando…' : 'Actualizar'}
+          </button>
+        </div>
       </div>
 
       <ResourceView state={state} onRetry={retry} loadingLabel="Cargando estado de la operación…">
@@ -145,7 +150,7 @@ export default function AdminOperacion() {
                     {worker.workers.map((w) => {
                       const signalText =
                         w.minutes_since != null
-                          ? `última señal hace ${w.minutes_since} min`
+                          ? `última señal ${timeAgo(w.minutes_since)}`
                           : w.last_seen_at
                             ? `última señal: ${fmtBogotaDate(w.last_seen_at)}`
                             : 'sin señal';

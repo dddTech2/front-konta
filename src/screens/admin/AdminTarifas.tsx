@@ -16,6 +16,7 @@ import type {
 } from '../../api/adminTypes';
 import { ApiError, NETWORK_ERROR_MESSAGE } from '../../api/client';
 import Dialog from '../../components/Dialog';
+import { IconCheck } from '../../components/icons';
 import { ResourceView } from '../../components/ScreenState';
 import { fmtMoney, fmtPercent, toBogotaIsoDate } from '../../format';
 import { useResource } from '../../hooks/useResource';
@@ -387,8 +388,8 @@ export default function AdminTarifas() {
 
   return (
     <section aria-label="Tarifas" className="screen admin-screen admin-tarifas-screen">
-      <div className="admin-screen-head">
-        <h1 className="screen-title">Tarifas</h1>
+      <div className="admin-page-head">
+        <h1 className="admin-page-title">Tarifas</h1>
       </div>
 
       {/* Aviso fijo arriba de la pantalla (AC #4) */}
@@ -448,14 +449,14 @@ export default function AdminTarifas() {
                                   <div className="admin-rate-actions">
                                     <button
                                       type="button"
-                                      className="btn-link admin-btn-rate-change"
+                                      className="btn-link admin-btn-sm admin-btn-rate-change"
                                       onClick={() => openChangeRate(row.key, col.key, rate)}
                                     >
                                       Cambiar
                                     </button>
                                     <button
                                       type="button"
-                                      className="btn-link admin-btn-rate-history"
+                                      className="btn-link admin-btn-sm admin-btn-rate-history"
                                       onClick={() => handleOpenHistory(row.key, col.key)}
                                     >
                                       Ver historial
@@ -718,7 +719,7 @@ export default function AdminTarifas() {
                   )}
                   {graceSuccess && (
                     <p className="admin-success-hint" role="status">
-                      ✓ Días de gracia actualizados correctamente.
+                      <IconCheck size={16} /> Días de gracia actualizados correctamente.
                     </p>
                   )}
                   <p className="admin-muted-note">

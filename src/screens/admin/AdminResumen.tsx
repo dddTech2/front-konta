@@ -1,9 +1,11 @@
 import { Link } from 'react-router-dom';
 import { getAdminSummary } from '../../api/adminEndpoints';
 import type { AdminSummaryResponse } from '../../api/adminTypes';
+import { IconChevronRight } from '../../components/icons';
 import { ResourceView } from '../../components/ScreenState';
 import { fmtBogotaDate, fmtMoney, fmtNit } from '../../format';
 import { useResource } from '../../hooks/useResource';
+import { incomeSourceLabel, timeAgo } from './labels';
 
 function WorkerIndicator({ summary }: { summary: AdminSummaryResponse }) {
   const worker = summary.worker?.workers?.[0];
@@ -11,7 +13,7 @@ function WorkerIndicator({ summary }: { summary: AdminSummaryResponse }) {
   const minutes = worker?.minutes_since != null ? worker.minutes_since : null;
   const signalText =
     minutes !== null
-      ? `última señal hace ${minutes} min`
+      ? `última señal ${timeAgo(minutes)}`
       : 'sin señal';
 
   return (
@@ -32,8 +34,8 @@ export default function AdminResumen() {
 
   return (
     <section aria-label="Resumen" className="screen admin-screen">
-      <div className="admin-screen-head">
-        <h1 className="screen-title">Resumen</h1>
+      <div className="admin-page-head">
+        <h1 className="admin-page-title">Resumen</h1>
       </div>
 
       <ResourceView state={state} onRetry={retry} loadingLabel="Cargando resumen de administración…">
@@ -89,11 +91,11 @@ export default function AdminResumen() {
                 <div className="card admin-card">
                   <h2 className="admin-section-title">Clientes por tipo</h2>
                   <div className="admin-stat-row">
-                    <span>DIAN</span>
+                    <span>{incomeSourceLabel('DIAN')}</span>
                     <strong>{tipoDian}</strong>
                   </div>
                   <div className="admin-stat-row">
-                    <span>Ventas manuales</span>
+                    <span>{incomeSourceLabel('MANUAL_SALES')}</span>
                     <strong>{tipoManual}</strong>
                   </div>
                 </div>
@@ -143,6 +145,9 @@ export default function AdminResumen() {
                             <span className="admin-item-badge admin-badge-corte">
                               Corte: {fmtBogotaDate(item.cutoff_date)}
                             </span>
+                            <span className="admin-action-trail" aria-hidden="true">
+                              <IconChevronRight size={16} />
+                            </span>
                           </Link>
                         </li>
                       ))}
@@ -171,6 +176,9 @@ export default function AdminResumen() {
                             </div>
                             <span className="admin-item-badge admin-badge-gracia">
                               Gracia hasta: {fmtBogotaDate(item.grace_period_end)}
+                            </span>
+                            <span className="admin-action-trail" aria-hidden="true">
+                              <IconChevronRight size={16} />
                             </span>
                           </Link>
                         </li>
