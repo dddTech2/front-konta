@@ -662,32 +662,6 @@ svg.icon {
   margin-bottom: 20px;
 }
 
-.mixed-bar-wrapper {
-  margin: 12px 0 16px;
-}
-
-.mixed-bar-track {
-  width: 100%;
-  height: 12px;
-  border-radius: 999px;
-  background: var(--beige);
-  display: flex;
-  overflow: hidden;
-}
-
-.mixed-bar-segment {
-  height: 100%;
-}
-
-.mixed-bar-emitido {
-  background: var(--verde); /* #1E3431 */
-}
-
-.mixed-bar-ventas {
-  background: var(--terracota); /* #BC5539 */
-}
-
-.mixed-bar-legend,
 .mixed-chart-legend {
   display: flex;
   justify-content: space-between;
@@ -754,23 +728,25 @@ svg.icon {
   color: var(--gris-medio);
 }
 
-.mixed-bar-stacked {
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  background: transparent;
+.mixed-bar-pair {
+  flex-direction: row;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 3px;
 }
 
-.mixed-bar-stack-emitido {
-  width: 100%;
+.mixed-bar-single {
+  width: 45%;
+  max-width: 14px;
+  border-radius: 4px 4px 1px 1px;
+}
+
+.mixed-bar-single-emitido {
   background: var(--verde); /* #1E3431 */
-  flex-shrink: 0;
 }
 
-.mixed-bar-stack-ventas {
-  width: 100%;
+.mixed-bar-single-ventas {
   background: var(--terracota); /* #BC5539 */
-  flex-shrink: 0;
 }
 
 .mixed-history-section {

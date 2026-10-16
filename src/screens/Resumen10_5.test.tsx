@@ -12,18 +12,16 @@ const DASHBOARD_PATH = `GET /api/dashboard/${BUSINESS_ID}`;
 
 const MIXED_SUMMARY: IncomeSummaryResponse = {
   ...INCOME_SUMMARY,
-  ingresos: '1000000.00',
+  ingresos: null,
   egresos: '250000.00',
-  utilidad: '750000.00',
+  utilidad: null,
   emitido: '800000.00',
   ventas: '200000.00',
   diferencia: '600000.00',
-  emitido_pct: '80.00',
-  ventas_pct: '20.00',
   emitido_count: 2,
   ventas_count: 1,
   clientes_count: 2,
-  historial: INCOME_SUMMARY.historial.map((h) => ({ ...h, emitido: '700000.00', ventas: '300000.00' })),
+  historial: INCOME_SUMMARY.historial.map((h) => ({ ...h, ingresos: null, utilidad: null, emitido: '700000.00', ventas: '300000.00' })),
 };
 
 beforeEach(() => {
@@ -52,7 +50,7 @@ describe('Story 10.5: perfil mixto', () => {
     expect(screen.getByRole('button', { name: /Registrar Venta/ })).toBeInTheDocument();
   });
 
-  it('muestra facturado vs ventas con participación, diferencia y clientes facturados', async () => {
+  it('muestra facturado y ventas por separado, con diferencia y clientes facturados (Q-10b)', async () => {
     openAs(ME_MIXED, '/resumen', { [INCOME_SUMMARY_PATH]: { body: MIXED_SUMMARY } });
 
     const block = await screen.findByRole('region', { name: 'Facturado vs Ventas' });
@@ -61,13 +59,19 @@ describe('Story 10.5: perfil mixto', () => {
     expect(within(block).getByText('2 facturas')).toBeInTheDocument();
     expect(within(block).getByText('$200.000')).toBeInTheDocument();
     expect(within(block).getByText('1 venta')).toBeInTheDocument();
-    expect(within(block).getByText('80 %')).toBeInTheDocument();
-    expect(within(block).getByText('20 %')).toBeInTheDocument();
     expect(within(block).getByText('Diferencia: $600.000')).toBeInTheDocument();
     expect(within(block).getByText('Facturaste $600.000 más de lo que registraste como ventas')).toBeInTheDocument();
     expect(within(block).getByText('Clientes facturados: 2')).toBeInTheDocument();
-    expect(screen.getByText('Ingresos totales')).toBeInTheDocument();
-    expect(screen.getByRole('region', { name: 'Historial de facturación y ventas' })).toBeInTheDocument();
+    expect(within(block).queryByText(/%/)).not.toBeInTheDocument();
+    // No se suman: sin ingresos totales ni utilidad; los egresos se muestran solos
+    expect(screen.queryByText(/Ingresos/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Utilidad/)).not.toBeInTheDocument();
+    expect(screen.getByText('Egresos')).toBeInTheDocument();
+    expect(screen.getByText('$250.000')).toBeInTheDocument();
+    const history = screen.getByRole('region', { name: 'Historial de facturación y ventas' });
+    expect(within(history).getAllByRole('listitem')[0]).toHaveAccessibleName(
+      expect.stringMatching(/facturado \$700\.000, ventas \$300\.000/),
+    );
   });
 
   it('cuando las ventas superan lo facturado, la frase lo dice al revés', async () => {

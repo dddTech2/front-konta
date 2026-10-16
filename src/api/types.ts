@@ -165,27 +165,28 @@ export interface InvoicesListResponse {
   offset: number;
 }
 
-/** Espejo de `IncomeSummaryResponse` de `api/schemas.py` (Story 6.3, 10.4, 10.5). */
+/**
+ * Espejo de `IncomeSummaryResponse` de `api/schemas.py` (Story 6.3, 10.4, 10.5).
+ * En el perfil mixto `ingresos` y `utilidad` llegan en null: facturado y ventas no se suman (Q-10b).
+ */
 export interface IncomeSummaryItem {
   month: string;
-  ingresos: string;
+  ingresos: string | null;
   egresos: string;
-  utilidad: string;
+  utilidad: string | null;
   emitido?: string;
   ventas?: string;
 }
 
 export interface IncomeSummaryResponse {
   month: string;
-  ingresos: string;
+  ingresos: string | null;
   egresos: string;
-  utilidad: string;
+  utilidad: string | null;
   historial: IncomeSummaryItem[];
   emitido?: string;
   ventas?: string;
   diferencia?: string;
-  emitido_pct?: string;
-  ventas_pct?: string;
   emitido_count?: number;
   ventas_count?: number;
   clientes_count?: number;
