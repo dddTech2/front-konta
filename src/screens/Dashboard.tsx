@@ -110,6 +110,7 @@ function RecentInvoices({ data }: { data: DashboardResponse }) {
 
 function DashboardContent({ data }: { data: DashboardResponse }) {
   const { resumen, alertaProximoVencimiento: alerta } = data;
+  const showsIva = data.shows_iva !== false;
   // Una API anterior a la 4.1b no envía `tax_type`: se trata como sin tipo.
   const taxType = alerta.tax_type ?? null;
   const linkTo = taxType?.startsWith('IVA') ? '/iva' : '/calendario';
@@ -124,29 +125,36 @@ function DashboardContent({ data }: { data: DashboardResponse }) {
     subtitle = capitalize(alerta.etiqueta);
   }
 
+  const isIvaAlert = Boolean(taxType?.startsWith('IVA'));
+  const showAlert = !isIvaAlert || showsIva;
+
   return (
     <>
       <Hero data={data} />
       <GraceBanner data={data} />
       <div className="metric-row">
-        <div className="card metric">
-          <p className="metric-label">IVA acumulado</p>
-          <p className="metric-value">{fmtMoney(resumen.ivaAcumulado)}</p>
-        </div>
+        {showsIva && (
+          <div className="card metric">
+            <p className="metric-label">IVA acumulado</p>
+            <p className="metric-value">{fmtMoney(resumen.ivaAcumulado)}</p>
+          </div>
+        )}
         <div className="card metric">
           <p className="metric-label">Facturas emitidas</p>
           <p className="metric-value">{resumen.numFacturas}</p>
         </div>
       </div>
 
-      <Link className="iva-link" to={linkTo}>
-        <StatusDot estado={alerta.estado} />
-        <div className="iva-link-text">
-          <p className="iva-link-title">{title}</p>
-          {subtitle !== null && <p className="iva-link-sub">{subtitle}</p>}
-        </div>
-        <Icon name="chevronRight" />
-      </Link>
+      {showAlert && (
+        <Link className="iva-link" to={linkTo}>
+          <StatusDot estado={alerta.estado} />
+          <div className="iva-link-text">
+            <p className="iva-link-title">{title}</p>
+            {subtitle !== null && <p className="iva-link-sub">{subtitle}</p>}
+          </div>
+          <Icon name="chevronRight" />
+        </Link>
+      )}
 
       <h2 className="section-title">Últimos 6 meses</h2>
       <Bars data={data} />

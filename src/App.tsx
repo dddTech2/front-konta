@@ -1,6 +1,6 @@
 import { useState, type ComponentType, type ReactNode } from 'react';
 import { Navigate, NavLink, Route, Routes, useLocation } from 'react-router-dom';
-import { isAdmin, isManualSales } from './api/client';
+import { hasManualSales, isAdmin, isMixed, showsIva } from './api/client';
 import type { SaleResponse } from './api/types';
 import { useAuth } from './auth/AuthContext';
 import { BRAND_NAME } from './brand';
@@ -37,7 +37,7 @@ function LoginRoute() {
   const { status, me } = useAuth();
   if (status !== 'anonymous') {
     if (isAdmin(me)) return <Navigate to="/admin" replace />;
-    return <Navigate to={isManualSales(me) ? '/resumen' : '/inicio'} replace />;
+    return <Navigate to={hasManualSales(me) ? '/resumen' : '/inicio'} replace />;
   }
   return <Login />;
 }
@@ -76,7 +76,7 @@ function RequireSession({ children }: { children: ReactNode }) {
 
   // Cliente (o sin rol explícito: por defecto CLIENT)
   if (isAdminPath) {
-    return <Navigate to={isManualSales(me) ? '/resumen' : '/inicio'} replace />;
+    return <Navigate to={hasManualSales(me) ? '/resumen' : '/inicio'} replace />;
   }
 
   if (me.business_id === null) return <SinNegocio />;
@@ -106,6 +106,13 @@ const MANUAL_SECTIONS: Section[] = [
   { path: '/documentos', label: 'Documentos' },
 ];
 
+const MIXED_SECTIONS: Section[] = [
+  { path: '/resumen', label: 'Resumen' },
+  { path: '/historial', label: 'Facturas' },
+  { path: '/calendario', label: 'Calendario' },
+  { path: '/documentos', label: 'Documentos' },
+];
+
 function Shell() {
   const { logout, me } = useAuth();
   const [salesOpen, setSalesOpen] = useState(false);
@@ -121,8 +128,15 @@ function Shell() {
     setSalesVersion((n) => n + 1);
   }
 
-  const manual = isManualSales(me);
-  const sections = manual ? MANUAL_SECTIONS : DIAN_SECTIONS;
+  const mixed = isMixed(me);
+  const manual = !mixed && hasManualSales(me);
+  const showIvaTab = showsIva(me);
+
+  const sections = mixed
+    ? MIXED_SECTIONS
+    : manual
+      ? MANUAL_SECTIONS
+      : DIAN_SECTIONS.filter((s) => s.path !== '/iva' || showIvaTab);
 
   return (
     <div className="shell">
@@ -160,18 +174,31 @@ function Shell() {
       </nav>
       <main className="shell-main">
         <Routes>
-          {manual ? (
+          {mixed ? (
+            <>
+              <Route path="/resumen" element={<Resumen businessId={businessId} refreshKey={salesVersion} />} />
+              <Route path="/historial" element={<Historial businessId={businessId} />} />
+              <Route path="/calendario" element={<Calendario businessId={businessId} />} />
+              <Route path="/documentos" element={<Documentos businessId={businessId} />} />
+              <Route path="*" element={<Navigate to="/resumen" replace />} />
+            </>
+          ) : manual ? (
             <>
               <Route path="/resumen" element={<Resumen businessId={businessId} refreshKey={salesVersion} />} />
               <Route path="/historial" element={<Historial businessId={businessId} />} />
               <Route path="/documentos" element={<Documentos businessId={businessId} />} />
+              <Route path="*" element={<Navigate to="/resumen" replace />} />
             </>
           ) : (
-            DIAN_SECTIONS.map(({ path, Screen }) => (
-              <Route key={path} path={path} element={<Screen businessId={businessId} />} />
-            ))
+            <>
+              <Route path="/inicio" element={<Dashboard businessId={businessId} />} />
+              {showIvaTab && <Route path="/iva" element={<IvaDetail businessId={businessId} />} />}
+              <Route path="/historial" element={<Historial businessId={businessId} />} />
+              <Route path="/calendario" element={<Calendario businessId={businessId} />} />
+              <Route path="/documentos" element={<Documentos businessId={businessId} />} />
+              <Route path="*" element={<Navigate to="/inicio" replace />} />
+            </>
           )}
-          <Route path="*" element={<Navigate to={manual ? '/resumen' : '/inicio'} replace />} />
         </Routes>
       </main>
     </div>

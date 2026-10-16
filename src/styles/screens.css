@@ -657,3 +657,122 @@ svg.icon {
   text-decoration: underline;
 }
 
+/* ---------- Resumen Mixto (Story 10.5) ---------- */
+.mixed-contrast-block {
+  margin-bottom: 20px;
+}
+
+.mixed-bar-wrapper {
+  margin: 12px 0 16px;
+}
+
+.mixed-bar-track {
+  width: 100%;
+  height: 12px;
+  border-radius: 999px;
+  background: var(--beige);
+  display: flex;
+  overflow: hidden;
+}
+
+.mixed-bar-segment {
+  height: 100%;
+}
+
+.mixed-bar-emitido {
+  background: var(--verde); /* #1E3431 */
+}
+
+.mixed-bar-ventas {
+  background: var(--terracota); /* #BC5539 */
+}
+
+.mixed-bar-legend,
+.mixed-chart-legend {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin-top: 8px;
+  font-size: 11.5px;
+  color: var(--gris-oscuro);
+  font-weight: 500;
+}
+
+.mixed-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.mixed-legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.dot-emitido {
+  background: var(--verde); /* #1E3431 */
+}
+
+.dot-ventas {
+  background: var(--terracota); /* #BC5539 */
+}
+
+.mixed-diff-box {
+  margin-top: 14px;
+  margin-bottom: 14px;
+}
+
+.mixed-diff-line {
+  margin: 0 0 4px;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--verde);
+}
+
+.mixed-diff-text {
+  margin: 0 0 6px;
+  font-size: 12.5px;
+  color: var(--gris-oscuro);
+  line-height: 1.4;
+}
+
+.mixed-clients-count {
+  margin: 0;
+  font-size: 12px;
+  color: var(--gris-medio);
+  font-weight: 600;
+}
+
+.metric-sub {
+  margin: 4px 0 0;
+  font-size: 11.5px;
+  color: var(--gris-medio);
+}
+
+.mixed-bar-stacked {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: transparent;
+}
+
+.mixed-bar-stack-emitido {
+  width: 100%;
+  background: var(--verde); /* #1E3431 */
+  flex-shrink: 0;
+}
+
+.mixed-bar-stack-ventas {
+  width: 100%;
+  background: var(--terracota); /* #BC5539 */
+  flex-shrink: 0;
+}
+
+.mixed-history-section {
+  margin: 20px 0 16px;
+}

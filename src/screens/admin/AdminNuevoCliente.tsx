@@ -217,7 +217,7 @@ export default function AdminNuevoCliente() {
 
   // Vista de éxito al crear el cliente
   if (created) {
-    const waText = `¡Hola ${contactName}! Te damos la bienvenida a Kontable. Usa este enlace para activar tu bot en Telegram: ${created.activation_link}`;
+    const waText = `¡Hola ${contactName}! Te damos la bienvenida a Konta. Usa este enlace para activar tu bot en Telegram: ${created.activation_link}`;
     const waLink = clientWhatsappUrl(phone, waText);
 
     return (

@@ -22,7 +22,7 @@ export interface SuspensionDetail {
   amountDue?: number;
 }
 
-/** Forma de `GET /api/auth/me` (Story 5.1). */
+/** Forma de `GET /api/auth/me` (Story 5.1, 10.1, 10.5). */
 export interface Me {
   business_id: string | null;
   is_provisioned: boolean;
@@ -30,17 +30,35 @@ export interface Me {
   subscription_status: string | null;
   has_warning_banner: boolean;
   redirect_url: string | null;
-  income_source?: 'DIAN' | 'MANUAL_SALES' | null;
+  income_source?: 'DIAN' | 'MANUAL_SALES' | 'MIXED' | null;
+  vat_responsible?: boolean | null;
+  package?: 'CON_IVA' | 'SIN_IVA' | null;
   role?: 'CLIENT' | 'ADMIN';
 }
 
-/** Un negocio sin `income_source` (API anterior) o sin negocio se trata como DIAN. */
-export function isManualSales(me: Me | null): boolean {
-  return me?.income_source === 'MANUAL_SALES';
+/** Negocio con ventas manuales: MANUAL_SALES o MIXED. */
+export function hasManualSales(me: Me | null | undefined): boolean {
+  return me?.income_source === 'MANUAL_SALES' || me?.income_source === 'MIXED';
+}
+
+/** Negocio con facturación electrónica: DIAN, MIXED o sin dato (compatibilidad API anterior). */
+export function hasEinvoicing(me: Me | null | undefined): boolean {
+  if (!me || me.income_source === undefined || me.income_source === null) return true;
+  return me.income_source === 'DIAN' || me.income_source === 'MIXED';
+}
+
+/** Muestra IVA si vat_responsible !== false (sin dato = true por compatibilidad). */
+export function showsIva(me: Me | null | undefined): boolean {
+  return me?.vat_responsible !== false;
+}
+
+/** Negocio con perfil mixto (facturación electrónica + ventas manuales). */
+export function isMixed(me: Me | null | undefined): boolean {
+  return me?.income_source === 'MIXED';
 }
 
 /** Un usuario sin `role` (API anterior) se trata como CLIENT. */
-export function isAdmin(me: Me | null): boolean {
+export function isAdmin(me: Me | null | undefined): boolean {
   return me?.role === 'ADMIN';
 }
 

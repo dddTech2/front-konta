@@ -73,6 +73,7 @@ export interface DashboardResponse {
   facturasRecientes: RecentInvoice[];
   alertaProximoVencimiento: NextTaxAlert;
   suscripcion: SubscriptionInfo;
+  shows_iva?: boolean;
 }
 
 export interface PeriodInvoiceItem {
@@ -164,12 +165,14 @@ export interface InvoicesListResponse {
   offset: number;
 }
 
-/** Espejo de `IncomeSummaryResponse` de `api/schemas.py` (Story 6.3). */
+/** Espejo de `IncomeSummaryResponse` de `api/schemas.py` (Story 6.3, 10.4, 10.5). */
 export interface IncomeSummaryItem {
   month: string;
   ingresos: string;
   egresos: string;
   utilidad: string;
+  emitido?: string;
+  ventas?: string;
 }
 
 export interface IncomeSummaryResponse {
@@ -178,6 +181,14 @@ export interface IncomeSummaryResponse {
   egresos: string;
   utilidad: string;
   historial: IncomeSummaryItem[];
+  emitido?: string;
+  ventas?: string;
+  diferencia?: string;
+  emitido_pct?: string;
+  ventas_pct?: string;
+  emitido_count?: number;
+  ventas_count?: number;
+  clientes_count?: number;
 }
 
 export type DocumentType =

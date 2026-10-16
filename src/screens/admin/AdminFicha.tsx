@@ -2067,7 +2067,7 @@ export default function AdminFicha() {
               >
                 <div className="admin-activation-dialog-body">
                   <p className="lead">
-                    Comparte este enlace con el cliente para que vincule su cuenta de Telegram con Kontable.
+                    Comparte este enlace con el cliente para que vincule su cuenta de Telegram con Konta.
                   </p>
 
                   <div className="field">
@@ -2096,7 +2096,7 @@ export default function AdminFicha() {
                     <a
                       href={clientWhatsappUrl(
                         contact.phone || '',
-                        `¡Hola ${contact.full_name}! Usa este enlace para activar tu bot de Telegram en Kontable: ${activationLink}`,
+                        `¡Hola ${contact.full_name}! Usa este enlace para activar tu bot de Telegram en Konta: ${activationLink}`,
                       )}
                       target="_blank"
                       rel="noopener noreferrer"

@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { useLocation } from 'react-router-dom';
 import { ApiError, NETWORK_ERROR_MESSAGE, requestOtp, verifyOtp } from '../api/client';
 import { useAuth } from '../auth/AuthContext';
-import { BRAND_NAME, BRAND_TAGLINE } from '../brand';
+import { BRAND_NAME, BRAND_SLOGAN } from '../brand';
 import { whatsappUrl } from '../config';
 import isotipoClaro from '../assets/brand/isotipo-claro.svg';
 import logotipoHorizontal from '../assets/brand/logotipo-horizontal-claro.svg';
@@ -96,7 +96,7 @@ export default function Login() {
     <main className="page">
       <img className="brand-mark" src={isotipoClaro} alt="" aria-hidden="true" width="64" height="64" />
       <h1 className="h-title">Ingresa a {BRAND_NAME}</h1>
-      <p className="brand-tagline">{BRAND_TAGLINE}</p>
+      <p className="brand-tagline">{BRAND_SLOGAN}</p>
 
       {step === 'identifier' ? (
         <form onSubmit={onRequest} noValidate>

@@ -23,6 +23,11 @@ export const ME_MANUAL: Me = {
   income_source: 'MANUAL_SALES',
 };
 
+export const ME_MIXED: Me = {
+  ...ME_OK,
+  income_source: 'MIXED',
+};
+
 export const ME_ADMIN: Me = {
   business_id: null,
   is_provisioned: false,
