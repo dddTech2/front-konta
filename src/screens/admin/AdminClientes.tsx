@@ -7,10 +7,16 @@ import { IconChevronRight } from '../../components/icons';
 import { ResourceView } from '../../components/ScreenState';
 import { fmtBogotaDate, fmtNit } from '../../format';
 import { useResource } from '../../hooks/useResource';
-import { incomeSourceLabel, planLabel } from './labels';
+import { incomeSourceLabel, packageLabel, planLabel } from './labels';
 
 const SEARCH_DEBOUNCE_MS = 300;
 const PAGE_SIZE = 20;
+
+const PACKAGE_OPTIONS: Array<{ label: string; value: string }> = [
+  { label: 'Todos los paquetes', value: '' },
+  { label: 'Con IVA', value: 'CON_IVA' },
+  { label: 'Sin IVA', value: 'SIN_IVA' },
+];
 
 const STATUS_OPTIONS: Array<{ label: string; value: string }> = [
   { label: 'Todos los estados', value: '' },
@@ -25,6 +31,7 @@ const TIPO_OPTIONS: Array<{ label: string; value: string }> = [
   { label: 'Todos los tipos', value: '' },
   { label: incomeSourceLabel('DIAN'), value: 'DIAN' },
   { label: incomeSourceLabel('MANUAL_SALES'), value: 'MANUAL_SALES' },
+  { label: incomeSourceLabel('MIXED'), value: 'MIXED' },
 ];
 
 function statusBadge(status?: string | null) {
@@ -65,6 +72,7 @@ export default function AdminClientes() {
   const urlQ = searchParams.get('q') || '';
   const urlStatus = searchParams.get('status') || '';
   const urlTipo = searchParams.get('tipo') || '';
+  const urlPackage = searchParams.get('package') || '';
   const urlPage = parseInt(searchParams.get('page') || '1', 10) || 1;
 
   const [searchDraft, setSearchDraft] = useState(urlQ);
@@ -115,6 +123,17 @@ export default function AdminClientes() {
     setSearchParams(next);
   }
 
+  function handleFilterPackage(val: string) {
+    const next = new URLSearchParams(searchParams);
+    if (val) {
+      next.set('package', val);
+    } else {
+      next.delete('package');
+    }
+    next.set('page', '1');
+    setSearchParams(next);
+  }
+
   function handlePageChange(newPage: number) {
     const next = new URLSearchParams(searchParams);
     next.set('page', String(newPage));
@@ -127,10 +146,11 @@ export default function AdminClientes() {
         q: urlQ || undefined,
         status: urlStatus || undefined,
         income_source: urlTipo || undefined,
+        package: urlPackage || undefined,
         page: urlPage,
         page_size: PAGE_SIZE,
       }),
-    [urlQ, urlStatus, urlTipo, urlPage],
+    [urlQ, urlStatus, urlTipo, urlPackage, urlPage],
   );
 
   return (
@@ -156,8 +176,27 @@ export default function AdminClientes() {
         />
       </div>
 
-      {/* Filtros por tipo y estado */}
+      {/* Filtros por paquete, tipo y estado */}
       <div className="filter-row admin-filter-row">
+        <div className="admin-filter-group">
+          <label htmlFor="filter-package" className="admin-filter-label">
+            Paquete:
+          </label>
+          <select
+            id="filter-package"
+            className="month-select admin-select"
+            aria-label="Filtrar por paquete"
+            value={urlPackage}
+            onChange={(e) => handleFilterPackage(e.target.value)}
+          >
+            {PACKAGE_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
         <div className="admin-filter-group">
           <label htmlFor="filter-tipo" className="admin-filter-label">
             Tipo:
@@ -226,6 +265,7 @@ export default function AdminClientes() {
                         <tr>
                           <th scope="col">Negocio</th>
                           <th scope="col">NIT</th>
+                          <th scope="col">Paquete</th>
                           <th scope="col">Tipo</th>
                           <th scope="col">Plan</th>
                           <th scope="col">Estado</th>
@@ -259,6 +299,11 @@ export default function AdminClientes() {
                               </Link>
                             </td>
                             <td><span className="admin-nowrap">{fmtNit(client.nit, client.dv)}</span></td>
+                            <td>
+                              <span className="admin-badge-package">
+                                {packageLabel(client.package || (client.vat_responsible !== undefined ? (client.vat_responsible ? 'CON_IVA' : 'SIN_IVA') : null))}
+                              </span>
+                            </td>
                             <td>{tipoLabel(client.income_source)}</td>
                             <td>{planLabel(client.plan)}</td>
                             <td>{statusBadge(client.subscription_status)}</td>
@@ -297,6 +342,12 @@ export default function AdminClientes() {
                         </div>
 
                         <div className="admin-client-card-meta">
+                          <span className="admin-meta-item">
+                            <span className="admin-meta-label">Paquete:</span>{' '}
+                            <span className="admin-badge-package">
+                              {packageLabel(client.package || (client.vat_responsible !== undefined ? (client.vat_responsible ? 'CON_IVA' : 'SIN_IVA') : null))}
+                            </span>
+                          </span>
                           <span className="admin-meta-item">
                             <span className="admin-meta-label">Tipo:</span> {tipoLabel(client.income_source)}
                           </span>

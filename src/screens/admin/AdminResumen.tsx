@@ -5,7 +5,7 @@ import { IconChevronRight } from '../../components/icons';
 import { ResourceView } from '../../components/ScreenState';
 import { fmtBogotaDate, fmtMoney, fmtNit } from '../../format';
 import { useResource } from '../../hooks/useResource';
-import { incomeSourceLabel, timeAgo } from './labels';
+import { incomeSourceLabel, packageLabel, timeAgo } from './labels';
 
 function WorkerIndicator({ summary }: { summary: AdminSummaryResponse }) {
   const worker = summary.worker?.workers?.[0];
@@ -40,15 +40,20 @@ export default function AdminResumen() {
 
       <ResourceView state={state} onRetry={retry} loadingLabel="Cargando resumen de administración…">
         {(summary) => {
-          const statusCounts = summary.clients_by_status;
+          const statusCounts = summary.clients_by_status || {};
           const activos = statusCounts.ACTIVO ?? 0;
           const enMora = statusCounts.EN_MORA ?? 0;
           const bloqueados = statusCounts.BLOQUEADO ?? 0;
           const sinSuscripcion = statusCounts.SIN_SUSCRIPCION ?? 0;
 
-          const tipoCounts = summary.clients_by_income_source;
+          const tipoCounts = summary.clients_by_income_source || {};
           const tipoDian = tipoCounts.DIAN ?? 0;
           const tipoManual = tipoCounts.MANUAL_SALES ?? 0;
+          const tipoMixto = tipoCounts.MIXED ?? 0;
+
+          const packageCounts = summary.clients_by_package || {};
+          const pkgConIva = packageCounts.CON_IVA ?? 0;
+          const pkgSinIva = packageCounts.SIN_IVA ?? 0;
 
           return (
             <div className="admin-resumen-content">
@@ -86,8 +91,20 @@ export default function AdminResumen() {
                 </div>
               </div>
 
-              {/* Clientes por tipo y métricas operativas */}
-              <div className="admin-grid admin-grid-2">
+              {/* Clientes por paquete, tipo y métricas operativas */}
+              <div className="admin-grid admin-grid-3">
+                <div className="card admin-card">
+                  <h2 className="admin-section-title">Clientes por paquete</h2>
+                  <div className="admin-stat-row">
+                    <span>{packageLabel('CON_IVA')}</span>
+                    <strong>{pkgConIva}</strong>
+                  </div>
+                  <div className="admin-stat-row">
+                    <span>{packageLabel('SIN_IVA')}</span>
+                    <strong>{pkgSinIva}</strong>
+                  </div>
+                </div>
+
                 <div className="card admin-card">
                   <h2 className="admin-section-title">Clientes por tipo</h2>
                   <div className="admin-stat-row">
@@ -97,6 +114,10 @@ export default function AdminResumen() {
                   <div className="admin-stat-row">
                     <span>{incomeSourceLabel('MANUAL_SALES')}</span>
                     <strong>{tipoManual}</strong>
+                  </div>
+                  <div className="admin-stat-row">
+                    <span>{incomeSourceLabel('MIXED')}</span>
+                    <strong>{tipoMixto}</strong>
                   </div>
                 </div>
 

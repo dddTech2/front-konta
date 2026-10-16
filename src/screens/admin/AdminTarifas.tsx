@@ -9,6 +9,7 @@ import {
   updateAdminPricingSettings,
 } from '../../api/adminEndpoints';
 import type {
+  AdminPackage,
   AdminPricingPlan,
   AdminPricingRate,
   AdminPricingRateHistoryItem,
@@ -20,6 +21,7 @@ import { IconCheck } from '../../components/icons';
 import { ResourceView } from '../../components/ScreenState';
 import { fmtMoney, fmtPercent, toBogotaIsoDate } from '../../format';
 import { useResource } from '../../hooks/useResource';
+import { packageLabel, planLabel } from './labels';
 
 /** Formatea YYYY-MM-DD a dd/mm/aaaa */
 export function fmtDateDMY(iso?: string | null): string {
@@ -44,22 +46,10 @@ export function getTodayBogota(): string {
   return `${y}-${m}-${d}`;
 }
 
-const SEGMENTOS_FILAS: Array<{ key: 'DIAN' | 'MANUAL_SALES'; label: string }> = [
-  { key: 'DIAN', label: 'Facturador DIAN' },
-  { key: 'MANUAL_SALES', label: 'Ventas manuales' },
+const PACKAGES: Array<{ key: AdminPackage; label: string }> = [
+  { key: 'CON_IVA', label: 'Con IVA' },
+  { key: 'SIN_IVA', label: 'Sin IVA' },
 ];
-
-const SEGMENTOS_COLUMNAS: Array<{ key: 'PERSONA_NATURAL' | 'PERSONA_JURIDICA'; label: string }> = [
-  { key: 'PERSONA_NATURAL', label: 'Persona natural' },
-  { key: 'PERSONA_JURIDICA', label: 'Empresa' },
-];
-
-function segmentLabel(incomeSource: string, taxpayerType: string): string {
-  const inc = incomeSource === 'MANUAL_SALES' ? 'Ventas manuales' : 'Facturador DIAN';
-  const tax = taxpayerType === 'PERSONA_JURIDICA' ? 'Empresa' : 'Persona natural';
-  return `${inc} — ${tax}`;
-}
-
 
 const fmtMonths = (m: number) => `${m} ${m === 1 ? 'mes' : 'meses'}`;
 export default function AdminTarifas() {
@@ -67,8 +57,7 @@ export default function AdminTarifas() {
 
   // ---------- Modal: Cambiar tarifa (AC #1) ----------
   const [rateModalOpen, setRateModalOpen] = useState(false);
-  const [targetIncomeSource, setTargetIncomeSource] = useState<'DIAN' | 'MANUAL_SALES'>('DIAN');
-  const [targetTaxpayerType, setTargetTaxpayerType] = useState<'PERSONA_NATURAL' | 'PERSONA_JURIDICA'>('PERSONA_NATURAL');
+  const [targetPackage, setTargetPackage] = useState<AdminPackage>('CON_IVA');
   const [newMonthlyPrice, setNewMonthlyPrice] = useState('');
   const [effectiveDate, setEffectiveDate] = useState(getTodayBogota());
   const [rateBusy, setRateBusy] = useState(false);
@@ -77,7 +66,7 @@ export default function AdminTarifas() {
 
   // ---------- Modal: Historial de tarifas (AC #5) ----------
   const [historyModalOpen, setHistoryModalOpen] = useState(false);
-  const [historySegmentTitle, setHistorySegmentTitle] = useState('');
+  const [historyPackage, setHistoryPackage] = useState<AdminPackage>('CON_IVA');
   const [historyItems, setHistoryItems] = useState<AdminPricingRateHistoryItem[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState<string | null>(null);
@@ -145,10 +134,9 @@ export default function AdminTarifas() {
     }
   }
 
-  // Abre el modal para cambiar tarifa de una celda
-  function openChangeRate(incomeSource: 'DIAN' | 'MANUAL_SALES', taxpayerType: 'PERSONA_NATURAL' | 'PERSONA_JURIDICA', currentRate?: AdminPricingRate) {
-    setTargetIncomeSource(incomeSource);
-    setTargetTaxpayerType(taxpayerType);
+  // Abre el modal para cambiar tarifa de un paquete (AC #1)
+  function openChangeRate(pkg: AdminPackage, currentRate?: AdminPricingRate) {
+    setTargetPackage(pkg);
     setNewMonthlyPrice(currentRate ? String(Math.round(Number(currentRate.monthly_price))) : '');
     setEffectiveDate(getTodayBogota());
     setRateError(null);
@@ -180,8 +168,7 @@ export default function AdminTarifas() {
 
     try {
       await setAdminPricingRate({
-        income_source: targetIncomeSource,
-        taxpayer_type: targetTaxpayerType,
+        package: targetPackage,
         monthly_price: Number(cleanAmount),
         effective_from: effectiveDate,
       });
@@ -201,17 +188,16 @@ export default function AdminTarifas() {
     }
   }
 
-  // Ver historial por segmento (AC #5)
-  async function handleOpenHistory(incomeSource: string, taxpayerType: string) {
-    const title = segmentLabel(incomeSource, taxpayerType);
-    setHistorySegmentTitle(title);
+  // Ver historial por paquete (AC #5)
+  async function handleOpenHistory(pkg: AdminPackage) {
+    setHistoryPackage(pkg);
     setHistoryModalOpen(true);
     setHistoryLoading(true);
     setHistoryError(null);
     setHistoryItems([]);
 
     try {
-      const items = await getAdminPricingRateHistory(incomeSource, taxpayerType);
+      const items = await getAdminPricingRateHistory(pkg);
       setHistoryItems(items);
     } catch (err) {
       if (err instanceof ApiError) {
@@ -408,111 +394,48 @@ export default function AdminTarifas() {
           return (
             <div className="admin-tarifas-content">
               {/* ================================================================
-                  1. VALOR MENSUAL POR TIPO DE CLIENTE (AC #1)
+                  1. VALOR MENSUAL POR PAQUETE (AC #1)
                   ================================================================ */}
               <div className="card admin-card admin-rates-card">
                 <div className="admin-card-head">
-                  <h2 className="admin-section-title">Valor mensual por tipo de cliente</h2>
+                  <h2 className="admin-section-title">Valor mensual por paquete</h2>
                 </div>
 
-                <div className="admin-table-container admin-desktop-only">
-                  <table className="admin-table admin-rates-table" aria-label="Valor mensual por tipo de cliente">
-                    <thead>
-                      <tr>
-                        <th scope="col">Tipo de negocio</th>
-                        {SEGMENTOS_COLUMNAS.map((col) => (
-                          <th key={col.key} scope="col">
-                            {col.label}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {SEGMENTOS_FILAS.map((row) => (
-                        <tr key={row.key} className="admin-table-row">
-                          <th scope="row" className="admin-rate-row-header">
-                            <strong>{row.label}</strong>
-                          </th>
-                          {SEGMENTOS_COLUMNAS.map((col) => {
-                            const rate = rates.find(
-                              (r) => r.income_source === row.key && r.taxpayer_type === col.key,
-                            );
-                            return (
-                              <td key={col.key} className="admin-rate-cell">
-                                <div className="admin-rate-cell-box">
-                                  <strong className="admin-rate-price">
-                                    {rate ? fmtMoney(Number(rate.monthly_price)) : '—'}
-                                  </strong>
-                                  <span className="admin-rate-date">
-                                    desde {rate ? fmtDateDMY(rate.effective_from) : '—'}
-                                  </span>
-                                  <div className="admin-rate-actions">
-                                    <button
-                                      type="button"
-                                      className="btn-link admin-btn-sm admin-btn-rate-change"
-                                      onClick={() => openChangeRate(row.key, col.key, rate)}
-                                    >
-                                      Cambiar
-                                    </button>
-                                    <button
-                                      type="button"
-                                      className="btn-link admin-btn-sm admin-btn-rate-history"
-                                      onClick={() => handleOpenHistory(row.key, col.key)}
-                                    >
-                                      Ver historial
-                                    </button>
-                                  </div>
-                                </div>
-                              </td>
-                            );
-                          })}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* Vista móvil para la tabla 2×2 (< 768 px) */}
-                <div className="admin-cards-list admin-mobile-only">
-                  {SEGMENTOS_FILAS.map((row) =>
-                    SEGMENTOS_COLUMNAS.map((col) => {
-                      const rate = rates.find(
-                        (r) => r.income_source === row.key && r.taxpayer_type === col.key,
-                      );
-                      return (
-                        <div key={`${row.key}-${col.key}`} className="admin-rate-mobile-card">
-                          <div className="admin-rate-mobile-head">
-                            <span className="admin-pill-category">{col.label}</span>
-                            <strong className="admin-rate-mobile-title">{row.label}</strong>
-                          </div>
-                          <div className="admin-rate-mobile-body">
-                            <strong className="admin-rate-price">
-                              {rate ? fmtMoney(Number(rate.monthly_price)) : '—'}
-                            </strong>
-                            <span className="admin-rate-date">
-                              desde {rate ? fmtDateDMY(rate.effective_from) : '—'}
-                            </span>
-                          </div>
+                <div className="admin-rates-cards-grid">
+                  {PACKAGES.map((pkg) => {
+                    const rate = rates.find((r) => r.package === pkg.key);
+                    return (
+                      <div key={pkg.key} className="admin-rate-package-card">
+                        <div className="admin-rate-package-head">
+                          <h3 className="admin-rate-package-title">{pkg.label}</h3>
+                        </div>
+                        <div className="admin-rate-cell-box">
+                          <strong className="admin-rate-price">
+                            {rate ? fmtMoney(Number(rate.monthly_price)) : '—'}
+                          </strong>
+                          <span className="admin-rate-date">
+                            desde {rate ? fmtDateDMY(rate.effective_from) : '—'}
+                          </span>
                           <div className="admin-rate-actions">
                             <button
                               type="button"
-                              className="btn-outline admin-btn-sm"
-                              onClick={() => openChangeRate(row.key, col.key, rate)}
+                              className="btn-link admin-btn-sm admin-btn-rate-change"
+                              onClick={() => openChangeRate(pkg.key, rate)}
                             >
                               Cambiar
                             </button>
                             <button
                               type="button"
-                              className="btn-link admin-btn-sm"
-                              onClick={() => handleOpenHistory(row.key, col.key)}
+                              className="btn-link admin-btn-sm admin-btn-rate-history"
+                              onClick={() => handleOpenHistory(pkg.key)}
                             >
                               Ver historial
                             </button>
                           </div>
                         </div>
-                      );
-                    }),
-                  )}
+                      </div>
+                    );
+                  })}
                 </div>
 
                 {/* Tarifas programadas (AC #1) */}
@@ -525,7 +448,7 @@ export default function AdminTarifas() {
                       <table className="admin-table" aria-label="Tarifas programadas">
                         <thead>
                           <tr>
-                            <th scope="col">Segmento</th>
+                            <th scope="col">Paquete</th>
                             <th scope="col">Nuevo valor mensual</th>
                             <th scope="col">Vigencia</th>
                             <th scope="col">Acción</th>
@@ -534,7 +457,7 @@ export default function AdminTarifas() {
                         <tbody>
                           {scheduled.map((item) => (
                             <tr key={item.id} className="admin-table-row">
-                              <td>{segmentLabel(item.income_source, item.taxpayer_type)}</td>
+                              <td>{packageLabel(item.package)}</td>
                               <td>
                                 <strong>{fmtMoney(Number(item.monthly_price))}</strong>
                               </td>
@@ -741,7 +664,7 @@ export default function AdminTarifas() {
                   <table className="admin-table admin-quotes-table" aria-label="Lo que paga un cliente nuevo">
                     <thead>
                       <tr>
-                        <th scope="col">Segmento</th>
+                        <th scope="col">Paquete</th>
                         <th scope="col">Plan</th>
                         <th scope="col">Duración</th>
                         <th scope="col">Valor mensual</th>
@@ -752,12 +675,12 @@ export default function AdminTarifas() {
                     </thead>
                     <tbody>
                       {quotes.map((q, idx) => {
-                        const planLabel = planNameByCode.get(q.plan) ?? q.plan;
+                        const planLabelText = planNameByCode.get(q.plan) ?? planLabel(q.plan, plans);
                         return (
-                          <tr key={`${q.income_source}-${q.taxpayer_type}-${planLabel}-${idx}`} className="admin-table-row">
-                            <td>{segmentLabel(q.income_source, q.taxpayer_type)}</td>
+                          <tr key={`${q.package}-${q.plan}-${idx}`} className="admin-table-row">
+                            <td>{packageLabel(q.package)}</td>
                             <td>
-                              <strong>{planLabel}</strong>
+                              <strong>{planLabelText}</strong>
                             </td>
                             <td>{fmtMonths(q.months)}</td>
                             <td>{fmtMoney(Number(q.monthly_price))}</td>
@@ -781,45 +704,41 @@ export default function AdminTarifas() {
                   </table>
                 </div>
 
-                {/* Vista lista para celular (AC #3: en el celular se muestra como lista por segmento) */}
+                {/* Vista lista para celular (AC #1 / AC #3: en el celular se muestra como lista por paquete) */}
                 <div className="admin-quotes-mobile-list admin-mobile-only">
-                  {SEGMENTOS_FILAS.map((row) =>
-                    SEGMENTOS_COLUMNAS.map((col) => {
-                      const segQuotes = quotes.filter(
-                        (q) => q.income_source === row.key && q.taxpayer_type === col.key,
-                      );
-                      if (segQuotes.length === 0) return null;
+                  {PACKAGES.map((pkg) => {
+                    const pkgQuotes = quotes.filter((q) => q.package === pkg.key);
+                    if (pkgQuotes.length === 0) return null;
 
-                      return (
-                        <div key={`m-quote-${row.key}-${col.key}`} className="admin-quote-seg-block">
-                          <h3 className="admin-quote-seg-title">
-                            {row.label} — {col.label}
-                          </h3>
-                          <div className="admin-quote-seg-items">
-                            {segQuotes.map((q) => {
-                              const planLabel = planNameByCode.get(q.plan) ?? q.plan;
-                              return (
-                                <div key={`item-${planLabel}`} className="admin-quote-seg-card">
-                                  <div className="admin-quote-seg-head">
-                                    <strong>{planLabel} ({fmtMonths(q.months)})</strong>
-                                    <strong className="text-accent">{fmtMoney(Number(q.final_price))}</strong>
-                                  </div>
-                                  <div className="admin-quote-seg-details">
-                                    <span>Mensual: {fmtMoney(Number(q.monthly_price))}</span>
-                                    {Number(q.discount_amount) > 0 && (
-                                      <span className="admin-pill-savings">
-                                        Ahorro: {fmtMoney(Number(q.discount_amount))} ({fmtPercent(Number(q.discount_rate))} %)
-                                      </span>
-                                    )}
-                                  </div>
+                    return (
+                      <div key={`m-quote-${pkg.key}`} className="admin-quote-seg-block">
+                        <h3 className="admin-quote-seg-title">
+                          Paquete {pkg.label}
+                        </h3>
+                        <div className="admin-quote-seg-items">
+                          {pkgQuotes.map((q) => {
+                            const planLabelText = planNameByCode.get(q.plan) ?? planLabel(q.plan, plans);
+                            return (
+                              <div key={`item-${q.package}-${q.plan}`} className="admin-quote-seg-card">
+                                <div className="admin-quote-seg-head">
+                                  <strong>{planLabelText} ({fmtMonths(q.months)})</strong>
+                                  <strong className="text-accent">{fmtMoney(Number(q.final_price))}</strong>
                                 </div>
-                              );
-                            })}
-                          </div>
+                                <div className="admin-quote-seg-details">
+                                  <span>Mensual: {fmtMoney(Number(q.monthly_price))}</span>
+                                  {Number(q.discount_amount) > 0 && (
+                                    <span className="admin-pill-savings">
+                                      Ahorro: {fmtMoney(Number(q.discount_amount))} ({fmtPercent(Number(q.discount_rate))} %)
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
-                      );
-                    }),
-                  )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -831,7 +750,7 @@ export default function AdminTarifas() {
               <Dialog
                 isOpen={rateModalOpen}
                 onClose={() => setRateModalOpen(false)}
-                title={`Cambiar tarifa: ${segmentLabel(targetIncomeSource, targetTaxpayerType)}`}
+                title={`Cambiar tarifa: ${packageLabel(targetPackage)}`}
                 busy={rateBusy}
               >
                 {rateError && (
@@ -897,7 +816,7 @@ export default function AdminTarifas() {
               <Dialog
                 isOpen={historyModalOpen}
                 onClose={() => setHistoryModalOpen(false)}
-                title={`Historial de tarifas: ${historySegmentTitle}`}
+                title={`Historial de tarifas: ${packageLabel(historyPackage)}`}
                 busy={false}
               >
                 {historyLoading ? (
@@ -907,10 +826,10 @@ export default function AdminTarifas() {
                     {historyError}
                   </p>
                 ) : historyItems.length === 0 ? (
-                  <p className="admin-empty-text">No hay registros en el historial de este segmento.</p>
+                  <p className="admin-empty-text">No hay registros en el historial de este paquete.</p>
                 ) : (
                   <div className="admin-table-container">
-                    <table className="admin-table" aria-label="Historial de tarifas del segmento">
+                    <table className="admin-table" aria-label="Historial de tarifas del paquete">
                       <thead>
                         <tr>
                           <th scope="col">Fecha</th>
@@ -959,7 +878,7 @@ export default function AdminTarifas() {
                   <div className="admin-confirm-box">
                     <p className="admin-confirm-text">
                       ¿Deseas cancelar la tarifa programada para{' '}
-                      <strong>{segmentLabel(rateToCancel.income_source, rateToCancel.taxpayer_type)}</strong> de{' '}
+                      <strong>{packageLabel(rateToCancel.package)}</strong> de{' '}
                       <strong>{fmtMoney(Number(rateToCancel.monthly_price))}</strong> vigente desde el{' '}
                       <strong>{fmtDateDMY(rateToCancel.effective_from)}</strong>?
                     </p>

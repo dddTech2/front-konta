@@ -1,11 +1,34 @@
 import { describe, expect, it } from 'vitest';
-import { incomeSourceLabel, paymentMethodLabel, planLabel, timeAgo } from './labels';
+import {
+  incomeSourceLabel,
+  packageLabel,
+  partnerLabel,
+  paymentMethodLabel,
+  planLabel,
+  timeAgo,
+  PARTNER_NYO,
+  PARTNER_VISION_CONTABLE,
+} from './labels';
 
-describe('labels (Story 8.8 AC #12)', () => {
+describe('labels (Story 8.8 AC #12, Story 10.6)', () => {
+  describe('packageLabel', () => {
+    it('traduce códigos de paquete a nombres legibles', () => {
+      expect(packageLabel('CON_IVA')).toBe('Con IVA');
+      expect(packageLabel('SIN_IVA')).toBe('Sin IVA');
+    });
+
+    it('maneja valores vacíos con raya', () => {
+      expect(packageLabel(null)).toBe('—');
+      expect(packageLabel(undefined)).toBe('—');
+      expect(packageLabel('')).toBe('—');
+    });
+  });
+
   describe('incomeSourceLabel', () => {
     it('traduce códigos internos a nombres legibles', () => {
-      expect(incomeSourceLabel('DIAN')).toBe('Facturador DIAN');
-      expect(incomeSourceLabel('MANUAL_SALES')).toBe('Ventas manuales');
+      expect(incomeSourceLabel('DIAN')).toBe('Factura electrónica');
+      expect(incomeSourceLabel('MANUAL_SALES')).toBe('Ventas');
+      expect(incomeSourceLabel('MIXED')).toBe('Mixto (factura + ventas)');
     });
 
     it('maneja valores vacíos o nulos con raya', () => {
@@ -16,6 +39,13 @@ describe('labels (Story 8.8 AC #12)', () => {
 
     it('devuelve valor original si no coincide con los conocidos', () => {
       expect(incomeSourceLabel('OTRO_ORIGEN')).toBe('OTRO_ORIGEN');
+    });
+  });
+
+  describe('partnerLabel', () => {
+    it('traduce códigos de socios', () => {
+      expect(partnerLabel('VISION_CONTABLE')).toBe(PARTNER_VISION_CONTABLE);
+      expect(partnerLabel('NYO')).toBe(PARTNER_NYO);
     });
   });
 

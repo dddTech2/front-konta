@@ -71,7 +71,7 @@ describe('Story 8.6: Panel admin — crear cliente, pagos y configuración', () 
       const inputCelular = screen.getByLabelText('Celular');
       const inputCedula = screen.getByLabelText('Cédula de ciudadanía');
       const selectPlan = screen.getByLabelText('Plan');
-      const selectOrigen = screen.getByLabelText('Tipo de negocio');
+      const selectOrigen = screen.getByLabelText(/Perfil|Tipo de negocio/);
 
       await user.type(inputNombre, 'Carlos Gómez');
       await user.type(inputCelular, '3001234567');
@@ -92,6 +92,7 @@ describe('Story 8.6: Panel admin — crear cliente, pagos y configuración', () 
           document_number: '10203040',
           plan: 'TRIMESTRAL',
           income_source: 'DIAN',
+          vat_responsible: false,
         });
       });
 
@@ -144,7 +145,7 @@ describe('Story 8.6: Panel admin — crear cliente, pagos y configuración', () 
       const inputNit = screen.getByLabelText('NIT');
       const inputRepDoc = screen.getByLabelText('Cédula del representante legal');
       const selectPlan = screen.getByLabelText('Plan');
-      const selectOrigen = screen.getByLabelText('Tipo de negocio');
+      const selectOrigen = screen.getByLabelText(/Perfil|Tipo de negocio/);
 
       await user.type(inputContacto, 'Laura Restrepo');
       await user.type(inputCelular, '3157654321');
@@ -169,6 +170,7 @@ describe('Story 8.6: Panel admin — crear cliente, pagos y configuración', () 
           legal_rep_doc: '52345678',
           plan: 'SEMESTRAL',
           income_source: 'MANUAL_SALES',
+          vat_responsible: false,
         });
       });
 
@@ -408,7 +410,7 @@ describe('Story 8.6: Panel admin — crear cliente, pagos y configuración', () 
   });
 
   describe('Tipo de negocio y perfil tributario (AC #3)', () => {
-    it('cambiar tipo de negocio envía PATCH y recarga la ficha', async () => {
+    it('cambiar tipo de negocio envía PATCH .../profile y recarga la ficha (Story 10.6)', async () => {
       const user = userEvent.setup();
       const updatedClient = {
         ...ADMIN_CLIENT_DETAIL,
@@ -421,7 +423,7 @@ describe('Story 8.6: Panel admin — crear cliente, pagos y configuración', () 
       const api = mockApi({
         'GET /api/auth/me': { body: ME_ADMIN },
         'GET /api/admin/clients/biz-1': { body: ADMIN_CLIENT_DETAIL },
-        'PATCH /api/admin/clients/biz-1/income-source': {
+        'PATCH /api/admin/clients/biz-1/profile': {
           status: 200,
           body: updatedClient,
         },
@@ -431,16 +433,16 @@ describe('Story 8.6: Panel admin — crear cliente, pagos y configuración', () 
 
       await screen.findByRole('heading', { name: 'Panadería La Espiga' });
 
-      // Botón "Cambiar" junto a Origen de ingresos
+      // Botón "Cambiar" junto a Origen de ingresos: abre el formulario de paquete y perfil
       const btnCambiar = screen.getByRole('button', { name: 'Cambiar' });
       await user.click(btnCambiar);
 
-      const dialog = screen.getByRole('dialog', { name: 'Cambiar origen de ingresos' });
+      const dialog = screen.getByRole('dialog', { name: 'Cambiar paquete o perfil' });
       expect(dialog).toBeInTheDocument();
 
-      const selectOrigen = within(dialog).getByLabelText('Origen de ingresos');
-      expect(selectOrigen).toHaveValue('DIAN');
-
+      // Ventas exige no declarar IVA
+      await user.click(within(dialog).getByRole('radio', { name: 'No' }));
+      const selectOrigen = within(dialog).getByLabelText('Perfil');
       await user.selectOptions(selectOrigen, 'MANUAL_SALES');
 
       // Actualizamos mock de GET para la recarga
@@ -451,17 +453,17 @@ describe('Story 8.6: Panel admin — crear cliente, pagos y configuración', () 
 
       await waitFor(() => {
         const patchCall = api.calls.find(
-          (c) => c.method === 'PATCH' && c.path === '/api/admin/clients/biz-1/income-source',
+          (c) => c.method === 'PATCH' && c.path === '/api/admin/clients/biz-1/profile',
         );
         expect(patchCall).toBeDefined();
-        expect(patchCall?.body).toEqual({ income_source: 'MANUAL_SALES' });
+        expect(patchCall?.body).toEqual({ vat_responsible: false, income_source: 'MANUAL_SALES' });
       });
 
       // Se cierra el diálogo y la ficha ahora muestra Ventas manuales
       await waitFor(() => {
         expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
       });
-      expect(screen.getAllByText('Ventas manuales').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('Ventas').length).toBeGreaterThan(0);
     });
 
     it('perfil tributario está oculto para clientes con ventas manuales (AC #3)', async () => {

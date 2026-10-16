@@ -19,6 +19,8 @@ export interface AdminClientListItem {
   cutoff_date?: string | null;
   grace_period_end?: string | null;
   is_active: boolean;
+  vat_responsible?: boolean;
+  package?: AdminPackage | string | null;
 }
 
 export interface AdminClientsListResponse {
@@ -40,6 +42,8 @@ export interface AdminClientBusiness {
   income_source: string;
   is_active: boolean;
   created_at?: string | null;
+  vat_responsible?: boolean;
+  package?: AdminPackage | string | null;
 }
 
 export interface AdminClientContact {
@@ -87,6 +91,8 @@ export interface AdminSubscriptionDetail {
   price_origin?: 'TARIFA' | 'ESPECIAL' | string | null;
   price_note?: string | null;
   current_rate_monthly?: string | null;
+  package?: AdminPackage | string | null;
+  current_package?: AdminPackage | string | null;
   price_changes?: AdminSubscriptionPriceChange[];
 }
 
@@ -100,6 +106,8 @@ export interface AdminPaymentSummary {
   created_at?: string | null;
   expected_amount?: string | null;
   difference?: string | null;
+  nyo_amount?: string | null;
+  visioncontable_amount?: string | null;
 }
 
 export interface AdminExtractionSummary {
@@ -137,6 +145,8 @@ export interface ClientDetailResponse {
   iva_periodicity?: string | null;
   is_withholding_agent?: boolean | null;
   price_changes?: AdminSubscriptionPriceChange[];
+  vat_responsible?: boolean | null;
+  package?: AdminPackage | string | null;
 }
 
 export interface AdminSummaryWorker {
@@ -178,6 +188,12 @@ export interface AdminSummaryResponse {
   clients_by_income_source: {
     DIAN?: number;
     MANUAL_SALES?: number;
+    MIXED?: number;
+    [key: string]: number | undefined;
+  };
+  clients_by_package?: {
+    CON_IVA?: number;
+    SIN_IVA?: number;
     [key: string]: number | undefined;
   };
   upcoming_cutoffs: AdminSummaryUpcomingCutoff[];
@@ -194,6 +210,7 @@ export interface AdminSummaryResponse {
 export interface AdminClientsQuery {
   q?: string;
   income_source?: string;
+  package?: AdminPackage | string;
   status?: string;
   page?: number;
   page_size?: number;
@@ -203,9 +220,10 @@ export interface AdminClientsQuery {
 // Story 8.6: Tipos de acciones (Alta de cliente, pagos y configuración)
 // ==============================================================================
 
+export type AdminPackage = 'CON_IVA' | 'SIN_IVA';
 export type AdminPersonType = 'PERSONA' | 'EMPRESA';
 export type AdminPlan = string;
-export type AdminIncomeSource = 'DIAN' | 'MANUAL_SALES';
+export type AdminIncomeSource = 'DIAN' | 'MANUAL_SALES' | 'MIXED';
 
 export interface AdminClientCreateRequest {
   person_type: 'PERSONA' | 'EMPRESA';
@@ -216,13 +234,15 @@ export interface AdminClientCreateRequest {
   nit?: string | null;
   legal_rep_doc?: string | null;
   plan: string;
-  income_source?: 'DIAN' | 'MANUAL_SALES' | string | null;
+  vat_responsible?: boolean;
+  income_source?: AdminIncomeSource | string | null;
 }
 
 export interface AdminClientCreateResponse {
   business_id: string;
   user_id: string;
   activation_link: string;
+  package?: AdminPackage | string | null;
   final_price?: string | null;
   monthly_price?: string | null;
   discount_rate?: string | null;
@@ -260,6 +280,11 @@ export interface AdminPaymentResponse {
 
 export interface AdminIncomeSourceRequest {
   income_source: 'DIAN' | 'MANUAL_SALES' | string;
+}
+
+export interface AdminClientProfileUpdateRequest {
+  vat_responsible?: boolean;
+  income_source?: AdminIncomeSource | string;
 }
 
 export interface AdminTaxProfileRequest {
@@ -367,8 +392,7 @@ export interface AdminPricingPlan {
 
 export interface AdminPricingRate {
   id?: string;
-  income_source: 'DIAN' | 'MANUAL_SALES' | string;
-  taxpayer_type: 'PERSONA_NATURAL' | 'PERSONA_JURIDICA' | string;
+  package: AdminPackage | string;
   monthly_price: string;
   effective_from: string;
   created_by_admin_id?: string | null;
@@ -376,15 +400,13 @@ export interface AdminPricingRate {
 
 export interface AdminPricingScheduledRate {
   id: string;
-  income_source: 'DIAN' | 'MANUAL_SALES' | string;
-  taxpayer_type: 'PERSONA_NATURAL' | 'PERSONA_JURIDICA' | string;
+  package: AdminPackage | string;
   monthly_price: string;
   effective_from: string;
 }
 
 export interface AdminPricingQuote {
-  income_source: 'DIAN' | 'MANUAL_SALES' | string;
-  taxpayer_type: 'PERSONA_NATURAL' | 'PERSONA_JURIDICA' | string;
+  package: AdminPackage | string;
   plan: string;
   months: number;
   monthly_price: string;
@@ -427,16 +449,14 @@ export interface AdminPricingSettingsUpdateRequest {
 }
 
 export interface AdminPricingRateCreateRequest {
-  income_source: string;
-  taxpayer_type: string;
+  package: AdminPackage | string;
   monthly_price: number | string;
   effective_from?: string;
 }
 
 export interface AdminPricingRateHistoryItem {
   id?: string;
-  income_source?: string;
-  taxpayer_type?: string;
+  package?: AdminPackage | string;
   monthly_price: string;
   effective_from: string;
   created_by?: string | null;
@@ -450,4 +470,106 @@ export interface AdminSubscriptionUpdateRequest {
   use_current_rate?: boolean;
   reason: string;
 }
+
+// ==============================================================================
+// Story 10.6: Tipos de Contabilidad y Reparto (AC #7 a #10)
+// ==============================================================================
+
+export interface AdminAccountingPackageCollected {
+  total: string;
+  count: number;
+}
+
+export interface AdminAccountingCollected {
+  total: string;
+  count: number;
+  by_package: {
+    CON_IVA: AdminAccountingPackageCollected;
+    SIN_IVA: AdminAccountingPackageCollected;
+    [key: string]: AdminAccountingPackageCollected | undefined;
+  };
+}
+
+export interface AdminAccountingPartnerSplit {
+  total: string;
+  by_package: {
+    CON_IVA: string;
+    SIN_IVA: string;
+    [key: string]: string | undefined;
+  };
+}
+
+export interface AdminAccountingSplit {
+  nyo: AdminAccountingPartnerSplit;
+  visioncontable: AdminAccountingPartnerSplit;
+}
+
+export interface AdminAccountingClients {
+  active_total: number;
+  by_package: {
+    CON_IVA: number;
+    SIN_IVA: number;
+    [key: string]: number | undefined;
+  };
+  by_income_source: {
+    DIAN: number;
+    MANUAL_SALES: number;
+    MIXED: number;
+    [key: string]: number | undefined;
+  };
+  new_in_period: number;
+}
+
+export interface AdminAccountingMrr {
+  total: string;
+  by_package: {
+    CON_IVA: string;
+    SIN_IVA: string;
+    [key: string]: string | undefined;
+  };
+}
+
+export interface AdminAccountingMrrSplit {
+  nyo: AdminAccountingPartnerSplit;
+  visioncontable: AdminAccountingPartnerSplit;
+}
+
+export interface AdminAccountingMonthlyItem {
+  month: string;
+  CON_IVA: string;
+  SIN_IVA: string;
+  total: string;
+}
+
+export interface AdminAccountingPaymentItem {
+  payment_date: string;
+  business_id: string;
+  commercial_name: string;
+  package: AdminPackage | string;
+  amount: string;
+  nyo_amount: string;
+  visioncontable_amount: string;
+}
+
+export interface AdminAccountingResponse {
+  collected: AdminAccountingCollected;
+  split: AdminAccountingSplit;
+  clients: AdminAccountingClients;
+  mrr: AdminAccountingMrr;
+  mrr_split: AdminAccountingMrrSplit;
+  monthly: AdminAccountingMonthlyItem[];
+  payments: AdminAccountingPaymentItem[];
+}
+
+export interface AdminRevenueSplitItem {
+  package: AdminPackage | string;
+  nyo_pct: string;
+  visioncontable_pct: string;
+  updated_at?: string | null;
+}
+
+export interface AdminRevenueSplitUpdateRequest {
+  nyo_pct: string;
+}
+
 

@@ -47,8 +47,8 @@ describe('Story 8.5: Panel admin en la SPA — Resumen, lista de clientes y fich
 
       // Clientes por tipo
       const statRow = (label: string) => screen.getByText(label).closest('.admin-stat-row');
-      expect(statRow('Facturador DIAN')).toHaveTextContent('20');
-      expect(statRow('Ventas manuales')).toHaveTextContent('5');
+      expect(statRow('Factura electrónica')).toHaveTextContent('20');
+      expect(statRow('Ventas')).toHaveTextContent('5');
 
       // Pagos del mes (cantidad y total formateado)
       expect(screen.getByText(/12 \(\$3\.600\.000\)/)).toBeInTheDocument();

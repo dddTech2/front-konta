@@ -16,9 +16,11 @@ import type {
   SaleListResponse,
 } from '../api/types';
 import type {
+  AdminAccountingResponse,
   AdminPricingQuote,
   AdminPricingRateHistoryItem,
   AdminPricingResponse,
+  AdminRevenueSplitItem,
 } from '../api/adminTypes';
 import type { MockReply } from './utils';
 
@@ -243,6 +245,11 @@ export const ADMIN_SUMMARY: AdminSummaryResponse = {
   clients_by_income_source: {
     DIAN: 20,
     MANUAL_SALES: 5,
+    MIXED: 0,
+  },
+  clients_by_package: {
+    CON_IVA: 16,
+    SIN_IVA: 9,
   },
   upcoming_cutoffs: [
     {
@@ -305,6 +312,8 @@ export const ADMIN_CLIENTS: AdminClientsListResponse = {
       cutoff_date: '2026-10-12',
       grace_period_end: null,
       is_active: true,
+      vat_responsible: true,
+      package: 'CON_IVA',
     },
     {
       business_id: 'biz-2',
@@ -323,6 +332,8 @@ export const ADMIN_CLIENTS: AdminClientsListResponse = {
       cutoff_date: '2026-10-05',
       grace_period_end: '2026-10-10',
       is_active: true,
+      vat_responsible: false,
+      package: 'SIN_IVA',
     },
     {
       business_id: 'biz-3',
@@ -341,6 +352,8 @@ export const ADMIN_CLIENTS: AdminClientsListResponse = {
       cutoff_date: '2026-09-30',
       grace_period_end: '2026-10-05',
       is_active: false,
+      vat_responsible: false,
+      package: 'SIN_IVA',
     },
   ],
   total: 3,
@@ -349,6 +362,9 @@ export const ADMIN_CLIENTS: AdminClientsListResponse = {
 };
 
 export const ADMIN_CLIENT_DETAIL: ClientDetailResponse = {
+  vat_responsible: true,
+  package: 'CON_IVA',
+  income_source: 'DIAN',
   business: {
     id: 'biz-1',
     legal_name: 'La Espiga SAS',
@@ -359,6 +375,8 @@ export const ADMIN_CLIENT_DETAIL: ClientDetailResponse = {
     legal_rep_doc: '80123456',
     economic_activity: 'Elaboración de productos de panadería',
     income_source: 'DIAN',
+    vat_responsible: true,
+    package: 'CON_IVA',
     is_active: true,
     created_at: '2026-01-15T10:00:00',
   },
@@ -389,6 +407,8 @@ export const ADMIN_CLIENT_DETAIL: ClientDetailResponse = {
     price_origin: 'TARIFA',
     price_note: null,
     current_rate_monthly: '100000.00',
+    package: 'CON_IVA',
+    current_package: 'CON_IVA',
     price_changes: [],
   },
   recent_payments: [
@@ -400,6 +420,8 @@ export const ADMIN_CLIENT_DETAIL: ClientDetailResponse = {
       payment_method: 'TRANSFERENCIA',
       verified_by_admin_id: 'adm-1',
       created_at: '2026-07-10T14:30:00',
+      nyo_amount: null,
+      visioncontable_amount: null,
     },
   ],
   recent_extractions: [
@@ -520,38 +542,21 @@ export const ADMIN_PRICING: AdminPricingResponse = {
   rates: [
     {
       id: 'rate-1',
-      income_source: 'DIAN',
-      taxpayer_type: 'PERSONA_NATURAL',
-      monthly_price: '100000.00',
-      effective_from: '2026-01-01',
-    },
-    {
-      id: 'rate-2',
-      income_source: 'DIAN',
-      taxpayer_type: 'PERSONA_JURIDICA',
+      package: 'CON_IVA',
       monthly_price: '120000.00',
       effective_from: '2026-01-01',
     },
     {
-      id: 'rate-3',
-      income_source: 'MANUAL_SALES',
-      taxpayer_type: 'PERSONA_NATURAL',
-      monthly_price: '80000.00',
-      effective_from: '2026-01-01',
-    },
-    {
-      id: 'rate-4',
-      income_source: 'MANUAL_SALES',
-      taxpayer_type: 'PERSONA_JURIDICA',
-      monthly_price: '90000.00',
+      id: 'rate-2',
+      package: 'SIN_IVA',
+      monthly_price: '100000.00',
       effective_from: '2026-01-01',
     },
   ],
   scheduled: [
     {
       id: 'sched-1',
-      income_source: 'DIAN',
-      taxpayer_type: 'PERSONA_JURIDICA',
+      package: 'CON_IVA',
       monthly_price: '135000.00',
       effective_from: '2026-11-01',
     },
@@ -584,41 +589,7 @@ export const ADMIN_PRICING: AdminPricingResponse = {
   ],
   quotes: [
     {
-      income_source: 'DIAN',
-      taxpayer_type: 'PERSONA_NATURAL',
-      plan: 'TRIMESTRAL',
-      months: 3,
-      monthly_price: '100000.00',
-      gross_total: '300000.00',
-      discount_rate: '10.00',
-      discount_amount: '30000.00',
-      final_price: '270000.00',
-    },
-    {
-      income_source: 'DIAN',
-      taxpayer_type: 'PERSONA_NATURAL',
-      plan: 'SEMESTRAL',
-      months: 6,
-      monthly_price: '100000.00',
-      gross_total: '600000.00',
-      discount_rate: '15.00',
-      discount_amount: '90000.00',
-      final_price: '510000.00',
-    },
-    {
-      income_source: 'DIAN',
-      taxpayer_type: 'PERSONA_NATURAL',
-      plan: 'ANUAL',
-      months: 12,
-      monthly_price: '100000.00',
-      gross_total: '1200000.00',
-      discount_rate: '20.00',
-      discount_amount: '240000.00',
-      final_price: '960000.00',
-    },
-    {
-      income_source: 'DIAN',
-      taxpayer_type: 'PERSONA_JURIDICA',
+      package: 'CON_IVA',
       plan: 'TRIMESTRAL',
       months: 3,
       monthly_price: '120000.00',
@@ -628,8 +599,7 @@ export const ADMIN_PRICING: AdminPricingResponse = {
       final_price: '324000.00',
     },
     {
-      income_source: 'DIAN',
-      taxpayer_type: 'PERSONA_JURIDICA',
+      package: 'CON_IVA',
       plan: 'SEMESTRAL',
       months: 6,
       monthly_price: '120000.00',
@@ -639,8 +609,7 @@ export const ADMIN_PRICING: AdminPricingResponse = {
       final_price: '612000.00',
     },
     {
-      income_source: 'DIAN',
-      taxpayer_type: 'PERSONA_JURIDICA',
+      package: 'CON_IVA',
       plan: 'ANUAL',
       months: 12,
       monthly_price: '120000.00',
@@ -650,78 +619,41 @@ export const ADMIN_PRICING: AdminPricingResponse = {
       final_price: '1152000.00',
     },
     {
-      income_source: 'MANUAL_SALES',
-      taxpayer_type: 'PERSONA_NATURAL',
+      package: 'SIN_IVA',
       plan: 'TRIMESTRAL',
       months: 3,
-      monthly_price: '80000.00',
-      gross_total: '240000.00',
+      monthly_price: '100000.00',
+      gross_total: '300000.00',
       discount_rate: '10.00',
-      discount_amount: '24000.00',
-      final_price: '216000.00',
+      discount_amount: '30000.00',
+      final_price: '270000.00',
     },
     {
-      income_source: 'MANUAL_SALES',
-      taxpayer_type: 'PERSONA_NATURAL',
+      package: 'SIN_IVA',
       plan: 'SEMESTRAL',
       months: 6,
-      monthly_price: '80000.00',
-      gross_total: '480000.00',
+      monthly_price: '100000.00',
+      gross_total: '600000.00',
       discount_rate: '15.00',
-      discount_amount: '72000.00',
-      final_price: '408000.00',
+      discount_amount: '90000.00',
+      final_price: '510000.00',
     },
     {
-      income_source: 'MANUAL_SALES',
-      taxpayer_type: 'PERSONA_NATURAL',
+      package: 'SIN_IVA',
       plan: 'ANUAL',
       months: 12,
-      monthly_price: '80000.00',
-      gross_total: '960000.00',
+      monthly_price: '100000.00',
+      gross_total: '1200000.00',
       discount_rate: '20.00',
-      discount_amount: '192000.00',
-      final_price: '768000.00',
-    },
-    {
-      income_source: 'MANUAL_SALES',
-      taxpayer_type: 'PERSONA_JURIDICA',
-      plan: 'TRIMESTRAL',
-      months: 3,
-      monthly_price: '90000.00',
-      gross_total: '270000.00',
-      discount_rate: '10.00',
-      discount_amount: '27000.00',
-      final_price: '243000.00',
-    },
-    {
-      income_source: 'MANUAL_SALES',
-      taxpayer_type: 'PERSONA_JURIDICA',
-      plan: 'SEMESTRAL',
-      months: 6,
-      monthly_price: '90000.00',
-      gross_total: '540000.00',
-      discount_rate: '15.00',
-      discount_amount: '81000.00',
-      final_price: '459000.00',
-    },
-    {
-      income_source: 'MANUAL_SALES',
-      taxpayer_type: 'PERSONA_JURIDICA',
-      plan: 'ANUAL',
-      months: 12,
-      monthly_price: '90000.00',
-      gross_total: '1080000.00',
-      discount_rate: '20.00',
-      discount_amount: '216000.00',
-      final_price: '864000.00',
+      discount_amount: '240000.00',
+      final_price: '960000.00',
     },
   ],
   grace_days: 3,
 };
 
 export const ADMIN_PRICING_QUOTE: AdminPricingQuote = {
-  income_source: 'DIAN',
-  taxpayer_type: 'PERSONA_JURIDICA',
+  package: 'CON_IVA',
   plan: 'TRIMESTRAL',
   months: 3,
   monthly_price: '120000.00',
@@ -734,23 +666,139 @@ export const ADMIN_PRICING_QUOTE: AdminPricingQuote = {
 export const ADMIN_PRICING_HISTORY: AdminPricingRateHistoryItem[] = [
   {
     id: 'hist-1',
-    income_source: 'DIAN',
-    taxpayer_type: 'PERSONA_NATURAL',
-    monthly_price: '90000.00',
+    package: 'CON_IVA',
+    monthly_price: '110000.00',
     effective_from: '2025-01-01',
     created_at: '2024-12-15T10:00:00Z',
     created_by: 'Admin Principal',
   },
   {
     id: 'hist-2',
-    income_source: 'DIAN',
-    taxpayer_type: 'PERSONA_NATURAL',
-    monthly_price: '100000.00',
+    package: 'CON_IVA',
+    monthly_price: '120000.00',
     effective_from: '2026-01-01',
     created_at: '2025-12-20T10:00:00Z',
     created_by: 'Admin Principal',
   },
 ];
+
+export const ADMIN_REVENUE_SPLIT: AdminRevenueSplitItem[] = [
+  {
+    package: 'CON_IVA',
+    nyo_pct: '50.00',
+    visioncontable_pct: '50.00',
+    updated_at: '2026-01-01T00:00:00Z',
+  },
+  {
+    package: 'SIN_IVA',
+    nyo_pct: '50.00',
+    visioncontable_pct: '50.00',
+    updated_at: '2026-01-01T00:00:00Z',
+  },
+];
+
+export const ADMIN_ACCOUNTING: AdminAccountingResponse = {
+  collected: {
+    total: '349900.00',
+    count: 2,
+    by_package: {
+      CON_IVA: {
+        total: '229900.00',
+        count: 1,
+      },
+      SIN_IVA: {
+        total: '120000.00',
+        count: 1,
+      },
+    },
+  },
+  split: {
+    nyo: {
+      total: '174950.00',
+      by_package: {
+        CON_IVA: '114950.00',
+        SIN_IVA: '60000.00',
+      },
+    },
+    visioncontable: {
+      total: '174950.00',
+      by_package: {
+        CON_IVA: '114950.00',
+        SIN_IVA: '60000.00',
+      },
+    },
+  },
+  clients: {
+    active_total: 10,
+    by_package: {
+      CON_IVA: 6,
+      SIN_IVA: 4,
+    },
+    by_income_source: {
+      DIAN: 5,
+      MANUAL_SALES: 3,
+      MIXED: 2,
+    },
+    new_in_period: 2,
+  },
+  mrr: {
+    total: '1200000.00',
+    by_package: {
+      CON_IVA: '720000.00',
+      SIN_IVA: '480000.00',
+    },
+  },
+  mrr_split: {
+    nyo: {
+      total: '600000.00',
+      by_package: {
+        CON_IVA: '360000.00',
+        SIN_IVA: '240000.00',
+      },
+    },
+    visioncontable: {
+      total: '600000.00',
+      by_package: {
+        CON_IVA: '360000.00',
+        SIN_IVA: '240000.00',
+      },
+    },
+  },
+  monthly: [
+    { month: '2025-11', CON_IVA: '120000.00', SIN_IVA: '100000.00', total: '220000.00' },
+    { month: '2025-12', CON_IVA: '120000.00', SIN_IVA: '100000.00', total: '220000.00' },
+    { month: '2026-01', CON_IVA: '120000.00', SIN_IVA: '100000.00', total: '220000.00' },
+    { month: '2026-02', CON_IVA: '150000.00', SIN_IVA: '100000.00', total: '250000.00' },
+    { month: '2026-03', CON_IVA: '150000.00', SIN_IVA: '100000.00', total: '250000.00' },
+    { month: '2026-04', CON_IVA: '180000.00', SIN_IVA: '110000.00', total: '290000.00' },
+    { month: '2026-05', CON_IVA: '180000.00', SIN_IVA: '110000.00', total: '290000.00' },
+    { month: '2026-06', CON_IVA: '200000.00', SIN_IVA: '120000.00', total: '320000.00' },
+    { month: '2026-07', CON_IVA: '200000.00', SIN_IVA: '120000.00', total: '320000.00' },
+    { month: '2026-08', CON_IVA: '220000.00', SIN_IVA: '120000.00', total: '340000.00' },
+    { month: '2026-09', CON_IVA: '220000.00', SIN_IVA: '120000.00', total: '340000.00' },
+    { month: '2026-10', CON_IVA: '229900.00', SIN_IVA: '120000.00', total: '349900.00' },
+  ],
+  payments: [
+    {
+      payment_date: '2026-10-05',
+      business_id: 'biz-1',
+      commercial_name: 'Panadería La Espiga',
+      package: 'CON_IVA',
+      amount: '229900.00',
+      nyo_amount: '114950.00',
+      visioncontable_amount: '114950.00',
+    },
+    {
+      payment_date: '2026-10-12',
+      business_id: 'biz-2',
+      commercial_name: 'Cafetería Central',
+      package: 'SIN_IVA',
+      amount: '120000.00',
+      nyo_amount: '60000.00',
+      visioncontable_amount: '60000.00',
+    },
+  ],
+};
 
 /** Respuestas por defecto de las pantallas de datos, para las pruebas que solo miran el shell. */
 export const DATA_ROUTES: Record<string, MockReply> = {
@@ -767,4 +815,6 @@ export const DATA_ROUTES: Record<string, MockReply> = {
   'GET /api/admin/jobs': { body: ADMIN_JOBS },
   'GET /api/admin/pricing': { body: ADMIN_PRICING },
   'GET /api/admin/pricing/quote': { body: ADMIN_PRICING_QUOTE },
+  'GET /api/admin/accounting': { body: ADMIN_ACCOUNTING },
+  'GET /api/admin/accounting/split': { body: ADMIN_REVENUE_SPLIT },
 };

@@ -10,16 +10,18 @@ import {
   recordAdminPayment,
   releaseAdminTelegram,
   triggerAdminExtraction,
-  updateAdminIncomeSource,
   updateAdminSubscription,
   updateAdminTaxProfile,
+  updateClientProfile,
   uploadAdminDocument,
 } from '../../api/adminEndpoints';
 import type {
   AdminDocumentItem,
   AdminExtractionCreateResponse,
   AdminIncomeSource,
+  AdminPackage,
   AdminPricingPlan,
+  ClientDetailResponse,
 } from '../../api/adminTypes';
 import { ApiError, NETWORK_ERROR_MESSAGE } from '../../api/client';
 import Dialog from '../../components/Dialog';
@@ -45,7 +47,7 @@ import {
   recentMonths,
 } from '../../format';
 import { useResource } from '../../hooks/useResource';
-import { incomeSourceLabel, paymentMethodLabel, planLabel } from './labels';
+import { incomeSourceLabel, packageLabel, paymentMethodLabel, planLabel } from './labels';
 
 function statusBadge(status?: string | null) {
   const s = (status || '').toUpperCase();
@@ -187,12 +189,13 @@ export default function AdminFicha() {
   const [pricingPlans, setPricingPlans] = useState<AdminPricingPlan[]>([]);
   const subChangeSubmitting = useRef(false);
 
-  // ---------- Estado: Origen de ingresos (AC #3) ----------
-  const [incomeSourceOpen, setIncomeSourceOpen] = useState(false);
-  const [selectedIncomeSource, setSelectedIncomeSource] = useState<AdminIncomeSource>('DIAN');
-  const [incomeSourceBusy, setIncomeSourceBusy] = useState(false);
-  const [incomeSourceError, setIncomeSourceError] = useState<string | null>(null);
-  const incomeSourceSubmitting = useRef(false);
+  // ---------- Estado: Cambiar paquete o perfil (Story 10.6 AC #3) ----------
+  const [profileModalOpen, setProfileModalOpen] = useState(false);
+  const [profileVatResponsible, setProfileVatResponsible] = useState(false);
+  const [profileIncomeSource, setProfileIncomeSource] = useState<AdminIncomeSource>('DIAN');
+  const [profileBusy, setProfileBusy] = useState(false);
+  const [profileError, setProfileError] = useState<string | null>(null);
+  const profileSubmitting = useRef(false);
 
   // ---------- Estado: Perfil tributario (AC #3) ----------
   const [taxProfileOpen, setTaxProfileOpen] = useState(false);
@@ -307,14 +310,17 @@ export default function AdminFicha() {
     }
   }
 
-  // Handler: Abrir cambio de suscripción (Story 9.3 AC #7)
-  function handleOpenSubChange(currentSub?: {
-    monthly_price?: string | null;
-    base_price?: string | null;
-    discount_rate?: string | null;
-    plan?: string | null;
-  }) {
-    setSubChangeMode('special');
+  // Handler: Abrir cambio de suscripción (Story 9.3 AC #7, Story 10.6 AC #4)
+  function handleOpenSubChange(
+    currentSub?: {
+      monthly_price?: string | null;
+      base_price?: string | null;
+      discount_rate?: string | null;
+      plan?: string | null;
+    },
+    initialMode: 'special' | 'plan' | 'current' = 'special',
+  ) {
+    setSubChangeMode(initialMode);
     setSubSpecialMonthly(
       currentSub?.monthly_price
         ? String(Math.round(Number(currentSub.monthly_price)))
@@ -416,29 +422,62 @@ export default function AdminFicha() {
     }
   }
 
-  // Handler: Guardar origen de ingresos
-  async function handleIncomeSourceSubmit(e: FormEvent) {
+  // Handlers: Cambiar paquete o perfil (Story 10.6 AC #3)
+  function handleOpenProfileModal(business: ClientDetailResponse['business'], ficha: ClientDetailResponse) {
+    const vat =
+      business.vat_responsible !== undefined
+        ? Boolean(business.vat_responsible)
+        : ficha.vat_responsible !== undefined
+          ? Boolean(ficha.vat_responsible)
+          : (business.package || ficha.package) === 'CON_IVA';
+    const src = (business.income_source || ficha.income_source || 'DIAN') as AdminIncomeSource;
+
+    setProfileVatResponsible(vat);
+    setProfileIncomeSource(vat ? 'DIAN' : src);
+    setProfileError(null);
+    setProfileModalOpen(true);
+  }
+
+  function handleProfileVatChange(responsible: boolean) {
+    setProfileVatResponsible(responsible);
+    if (responsible) {
+      setProfileIncomeSource('DIAN');
+    }
+  }
+
+  async function handleProfileSubmit(e: FormEvent) {
     e.preventDefault();
-    if (incomeSourceSubmitting.current) return;
-    incomeSourceSubmitting.current = true;
-    setIncomeSourceBusy(true);
-    setIncomeSourceError(null);
+    if (profileSubmitting.current) return;
+    profileSubmitting.current = true;
+    setProfileBusy(true);
+    setProfileError(null);
 
     try {
-      await updateAdminIncomeSource(businessId, { income_source: selectedIncomeSource });
-      setIncomeSourceOpen(false);
+      await updateClientProfile(businessId, {
+        vat_responsible: profileVatResponsible,
+        income_source: profileVatResponsible ? 'DIAN' : profileIncomeSource,
+      });
+      setProfileModalOpen(false);
       retry();
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.kind !== 'unauthorized' && err.kind !== 'forbidden') {
-          setIncomeSourceError(err.message);
+          if (err.code === 'VAT_REQUIRES_EINVOICING' || err.message === 'VAT_REQUIRES_EINVOICING') {
+            setProfileError(
+              err.message && err.message !== 'VAT_REQUIRES_EINVOICING'
+                ? err.message
+                : 'Un declarante de IVA siempre factura electrónicamente.',
+            );
+          } else {
+            setProfileError(err.message || 'Error al actualizar el perfil.');
+          }
         }
       } else {
-        setIncomeSourceError(NETWORK_ERROR_MESSAGE);
+        setProfileError(NETWORK_ERROR_MESSAGE);
       }
     } finally {
-      incomeSourceSubmitting.current = false;
-      setIncomeSourceBusy(false);
+      profileSubmitting.current = false;
+      setProfileBusy(false);
     }
   }
 
@@ -784,20 +823,50 @@ export default function AdminFicha() {
 
           const isManual = business.income_source === 'MANUAL_SALES';
 
+          const clientPackage: AdminPackage | string | null =
+            business.package ||
+            ficha.package ||
+            (business.vat_responsible !== undefined
+              ? business.vat_responsible
+                ? 'CON_IVA'
+                : 'SIN_IVA'
+              : null);
+
+          const clientProfile = business.income_source || ficha.income_source;
+
           return (
             <div className="admin-ficha-content">
-              {/* Encabezado: Negocio, NIT-DV, Tipo y Estado */}
+              {/* Encabezado: Negocio, NIT-DV, Chips de Paquete y Perfil, Estado y Cambiar paquete o perfil (AC #3) */}
               <div className="card admin-ficha-header">
                 <div className="admin-ficha-header-top">
                   <div>
-                    <span className="admin-pill-category">{personaLabel(business.taxpayer_type)}</span>
+                    <div className="admin-ficha-chips-row">
+                      <span className="admin-pill-category">{personaLabel(business.taxpayer_type)}</span>
+                      {clientPackage && (
+                        <span className="admin-pill-badge admin-pill-package">
+                          {packageLabel(clientPackage)}
+                        </span>
+                      )}
+                      {clientProfile && (
+                        <span className="admin-pill-badge admin-pill-profile">
+                          {incomeSourceLabel(clientProfile)}
+                        </span>
+                      )}
+                    </div>
                     <h1 className="h-title admin-ficha-title">{business.commercial_name}</h1>
                     {business.legal_name && (
                       <p className="admin-ficha-subtitle">Razón social: {business.legal_name}</p>
                     )}
                   </div>
-                  <div>
+                  <div className="admin-ficha-header-actions">
                     {statusBadge(subscription?.status || (business.is_active ? 'ACTIVO' : 'SIN_SUSCRIPCION'))}
+                    <button
+                      type="button"
+                      className="btn-outline admin-btn-sm admin-btn-change-profile"
+                      onClick={() => handleOpenProfileModal(business, ficha)}
+                    >
+                      Cambiar paquete o perfil
+                    </button>
                   </div>
                 </div>
 
@@ -807,17 +876,17 @@ export default function AdminFicha() {
                     <strong className="admin-meta-value admin-nowrap">{fmtNit(business.nit, business.dv)}</strong>
                   </div>
                   <div className="admin-meta-col">
+                    <span className="admin-meta-label">Paquete</span>
+                    <strong className="admin-meta-value">{packageLabel(clientPackage)}</strong>
+                  </div>
+                  <div className="admin-meta-col">
                     <span className="admin-meta-label">Origen de ingresos</span>
                     <div className="admin-meta-with-action">
                       <strong className="admin-meta-value">{tipoLabel(business.income_source)}</strong>
                       <button
                         type="button"
                         className="btn-link admin-btn-sm admin-btn-inline-action"
-                        onClick={() => {
-                          setSelectedIncomeSource(business.income_source as AdminIncomeSource);
-                          setIncomeSourceError(null);
-                          setIncomeSourceOpen(true);
-                        }}
+                        onClick={() => handleOpenProfileModal(business, ficha)}
                       >
                         Cambiar
                       </button>
@@ -984,6 +1053,28 @@ export default function AdminFicha() {
                   </div>
                 </div>
 
+                {/* AC #4: Alerta ámbar si subscription.package existe y es distinto de subscription.current_package */}
+                {subscription &&
+                  subscription.package &&
+                  subscription.current_package &&
+                  subscription.package !== subscription.current_package && (
+                    <div className="admin-amber-alert" role="alert">
+                      <span>
+                        Cotizado como {packageLabel(subscription.package)}; hoy es {packageLabel(subscription.current_package)}
+                        {subscription.current_rate_monthly
+                          ? ` (tarifa ${fmtMoney(Number(subscription.current_rate_monthly))})`
+                          : ''}
+                      </span>
+                      <button
+                        type="button"
+                        className="btn-link admin-btn-sm admin-btn-amber-action"
+                        onClick={() => handleOpenSubChange(subscription, 'current')}
+                      >
+                        Volver a la tarifa vigente
+                      </button>
+                    </div>
+                  )}
+
                 {subscription ? (
                   <div className="admin-sub-grid">
                     <div className="admin-sub-item">
@@ -1087,74 +1178,130 @@ export default function AdminFicha() {
                   <p className="admin-empty-text">No hay pagos registrados.</p>
                 ) : (
                   <>
-                    <div className="admin-table-container admin-desktop-only">
-                      <table className="admin-table" aria-label="Historial de pagos">
-                        <thead>
-                          <tr>
-                            <th scope="col">Fecha</th>
-                            <th scope="col">Monto</th>
-                            <th scope="col">Referencia</th>
-                            <th scope="col">Método</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {recent_payments.map((p) => (
-                            <tr key={p.id} className="admin-table-row">
-                              <td>
-                                <span className="admin-nowrap">
-                                  {p.payment_date
-                                    ? fmtDeadline(p.payment_date)
-                                    : p.created_at
-                                      ? fmtBogotaDate(p.created_at)
-                                      : '—'}
-                                </span>
-                              </td>
-                              <td>
-                                <strong className="admin-nowrap">{fmtMoney(Number(p.amount))}</strong>
-                              </td>
-                              <td>
-                                <code>{p.reference_code || '—'}</code>
-                              </td>
-                              <td>{paymentMethodLabel(p.payment_method)}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
+                    {(() => {
+                      const hasPartnerSplit = recent_payments.some(
+                        (p) =>
+                          (p.visioncontable_amount != null && p.visioncontable_amount !== '') ||
+                          (p.nyo_amount != null && p.nyo_amount !== ''),
+                      );
 
-                    <div className="admin-mobile-only" style={{ gap: '10px' }}>
-                      {recent_payments.map((p) => {
-                        const dateText = p.payment_date
-                          ? fmtDeadline(p.payment_date)
-                          : p.created_at
-                            ? fmtBogotaDate(p.created_at)
-                            : '—';
-                        return (
-                          <div key={p.id} className="admin-ficha-card">
-                            <div className="admin-ficha-card-top">
-                              <span className="admin-ficha-card-main admin-nowrap">
-                                {fmtMoney(Number(p.amount))}
-                              </span>
-                              <span className="admin-ficha-card-sub admin-nowrap">{dateText}</span>
-                            </div>
-                            <div className="admin-ficha-card-meta">
-                              <div className="admin-ficha-card-row">
-                                <span className="admin-ficha-card-label">Referencia</span>
-                                <span className="admin-ficha-card-val">
-                                <code>{p.reference_code || '—'}</code>
-                                </span>
-                              </div>
-                              <div className="admin-ficha-card-row">
-                                <span className="admin-ficha-card-label">Método</span>
-                                <span className="admin-ficha-card-val">
-                                  {paymentMethodLabel(p.payment_method)}
-                                </span>
-                              </div>
-                            </div>
+                      return (
+                        <>
+                          <div className="admin-table-container admin-desktop-only">
+                            <table className="admin-table" aria-label="Historial de pagos">
+                              <thead>
+                                <tr>
+                                  <th scope="col">Fecha</th>
+                                  <th scope="col">Monto</th>
+                                  {hasPartnerSplit && (
+                                    <>
+                                      <th scope="col">Visión Contable</th>
+                                      <th scope="col">NYO</th>
+                                    </>
+                                  )}
+                                  <th scope="col">Referencia</th>
+                                  <th scope="col">Método</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {recent_payments.map((p) => (
+                                  <tr key={p.id} className="admin-table-row">
+                                    <td>
+                                      <span className="admin-nowrap">
+                                        {p.payment_date
+                                          ? fmtDeadline(p.payment_date)
+                                          : p.created_at
+                                            ? fmtBogotaDate(p.created_at)
+                                            : '—'}
+                                      </span>
+                                    </td>
+                                    <td>
+                                      <strong className="admin-nowrap">{fmtMoney(Number(p.amount))}</strong>
+                                    </td>
+                                    {hasPartnerSplit && (
+                                      <>
+                                        <td>
+                                          <span className="admin-nowrap">
+                                            {p.visioncontable_amount != null && p.visioncontable_amount !== ''
+                                              ? fmtMoney(Number(p.visioncontable_amount))
+                                              : '—'}
+                                          </span>
+                                        </td>
+                                        <td>
+                                          <span className="admin-nowrap">
+                                            {p.nyo_amount != null && p.nyo_amount !== ''
+                                              ? fmtMoney(Number(p.nyo_amount))
+                                              : '—'}
+                                          </span>
+                                        </td>
+                                      </>
+                                    )}
+                                    <td>
+                                      <code>{p.reference_code || '—'}</code>
+                                    </td>
+                                    <td>{paymentMethodLabel(p.payment_method)}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
                           </div>
-                        );
-                      })}
-                    </div>
+
+                          <div className="admin-mobile-only" style={{ gap: '10px' }}>
+                            {recent_payments.map((p) => {
+                              const dateText = p.payment_date
+                                ? fmtDeadline(p.payment_date)
+                                : p.created_at
+                                  ? fmtBogotaDate(p.created_at)
+                                  : '—';
+                              return (
+                                <div key={p.id} className="admin-ficha-card">
+                                  <div className="admin-ficha-card-top">
+                                    <span className="admin-ficha-card-main admin-nowrap">
+                                      {fmtMoney(Number(p.amount))}
+                                    </span>
+                                    <span className="admin-ficha-card-sub admin-nowrap">{dateText}</span>
+                                  </div>
+                                  <div className="admin-ficha-card-meta">
+                                    {hasPartnerSplit && (
+                                      <>
+                                        {p.visioncontable_amount != null && p.visioncontable_amount !== '' && (
+                                          <div className="admin-ficha-card-row">
+                                            <span className="admin-ficha-card-label">Visión Contable</span>
+                                            <span className="admin-ficha-card-val admin-nowrap">
+                                              {fmtMoney(Number(p.visioncontable_amount))}
+                                            </span>
+                                          </div>
+                                        )}
+                                        {p.nyo_amount != null && p.nyo_amount !== '' && (
+                                          <div className="admin-ficha-card-row">
+                                            <span className="admin-ficha-card-label">NYO</span>
+                                            <span className="admin-ficha-card-val admin-nowrap">
+                                              {fmtMoney(Number(p.nyo_amount))}
+                                            </span>
+                                          </div>
+                                        )}
+                                      </>
+                                    )}
+                                    <div className="admin-ficha-card-row">
+                                      <span className="admin-ficha-card-label">Referencia</span>
+                                      <span className="admin-ficha-card-val">
+                                        <code>{p.reference_code || '—'}</code>
+                                      </span>
+                                    </div>
+                                    <div className="admin-ficha-card-row">
+                                      <span className="admin-ficha-card-label">Método</span>
+                                      <span className="admin-ficha-card-val">
+                                        {paymentMethodLabel(p.payment_method)}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </>
+                      );
+                    })()}
                   </>
                 )}
               </div>
@@ -1954,44 +2101,103 @@ export default function AdminFicha() {
                 )}
               </Dialog>
 
-              {/* Diálogo: Cambiar origen de ingresos (AC #3) */}
+              {/* Diálogo: Cambiar paquete o perfil (Story 10.6 AC #3) */}
               <Dialog
-                isOpen={incomeSourceOpen}
-                onClose={() => setIncomeSourceOpen(false)}
-                title="Cambiar origen de ingresos"
-                busy={incomeSourceBusy}
+                isOpen={profileModalOpen}
+                onClose={() => setProfileModalOpen(false)}
+                title="Cambiar paquete o perfil"
+                busy={profileBusy}
               >
-                {incomeSourceError && (
+                {profileError && (
                   <p className="form-error" role="alert">
-                    {incomeSourceError}
+                    {profileError}
                   </p>
                 )}
-                <form onSubmit={handleIncomeSourceSubmit}>
+                <form onSubmit={handleProfileSubmit}>
+                  {/* Selector "¿Declara IVA?" */}
                   <div className="field">
-                    <label className="field-label" htmlFor="select-income-source">
-                      Origen de ingresos
+                    <label className="field-label" id="label-profile-declara-iva">
+                      ¿Declara IVA?
                     </label>
-                    <select
-                      id="select-income-source"
-                      className="field-input"
-                      value={selectedIncomeSource}
-                      onChange={(e) => setSelectedIncomeSource(e.target.value as AdminIncomeSource)}
-                      disabled={incomeSourceBusy}
+                    <div
+                      className="admin-toggle-group"
+                      role="radiogroup"
+                      aria-labelledby="label-profile-declara-iva"
                     >
-                      <option value="DIAN">Facturador DIAN</option>
-                      <option value="MANUAL_SALES">Ventas manuales</option>
-                    </select>
+                      <button
+                        type="button"
+                        role="radio"
+                        aria-checked={profileVatResponsible}
+                        className={`admin-toggle-btn ${profileVatResponsible ? 'active' : ''}`}
+                        onClick={() => handleProfileVatChange(true)}
+                        disabled={profileBusy}
+                      >
+                        Sí
+                      </button>
+                      <button
+                        type="button"
+                        role="radio"
+                        aria-checked={!profileVatResponsible}
+                        className={`admin-toggle-btn ${!profileVatResponsible ? 'active' : ''}`}
+                        onClick={() => handleProfileVatChange(false)}
+                        disabled={profileBusy}
+                      >
+                        No
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Selector de Perfil */}
+                  <div className="field">
+                    <label className="field-label" htmlFor="dialog-client-profile">
+                      Perfil
+                    </label>
+                    {profileVatResponsible ? (
+                      <div>
+                        <input
+                          id="dialog-client-profile"
+                          type="text"
+                          className="field-input"
+                          value="Factura electrónica"
+                          readOnly
+                          disabled
+                        />
+                        <span className="field-hint">
+                          Un declarante de IVA siempre factura electrónicamente
+                        </span>
+                      </div>
+                    ) : (
+                      <select
+                        id="dialog-client-profile"
+                        className="field-input"
+                        value={profileIncomeSource}
+                        onChange={(e) =>
+                          setProfileIncomeSource(e.target.value as AdminIncomeSource)
+                        }
+                        disabled={profileBusy}
+                      >
+                        <option value="DIAN">Factura electrónica</option>
+                        <option value="MANUAL_SALES">Ventas</option>
+                        <option value="MIXED">Mixto (factura + ventas)</option>
+                      </select>
+                    )}
+                  </div>
+
+                  {/* Aviso informativo de precio */}
+                  <div className="admin-notice-box" role="note">
+                    El precio del cliente no cambia. Si debe pagar la tarifa del nuevo paquete, usa{' '}
+                    <strong>Cambiar precio → Volver a la tarifa vigente</strong>.
                   </div>
 
                   <div className="stack admin-dialog-actions">
-                    <button className="btn-primary" type="submit" disabled={incomeSourceBusy}>
-                      {incomeSourceBusy ? 'Guardando…' : 'Guardar'}
+                    <button className="btn-primary" type="submit" disabled={profileBusy}>
+                      {profileBusy ? 'Guardando…' : 'Guardar'}
                     </button>
                     <button
                       className="btn-outline"
                       type="button"
-                      onClick={() => setIncomeSourceOpen(false)}
-                      disabled={incomeSourceBusy}
+                      onClick={() => setProfileModalOpen(false)}
+                      disabled={profileBusy}
                     >
                       Cancelar
                     </button>

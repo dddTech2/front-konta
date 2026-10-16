@@ -3,6 +3,7 @@ import type {
   AdminActivationLinkResponse,
   AdminClientCreateRequest,
   AdminClientCreateResponse,
+  AdminClientProfileUpdateRequest,
   AdminClientsListResponse,
   AdminClientsQuery,
   AdminIncomeSourceRequest,
@@ -18,6 +19,7 @@ import type {
   AdminJobsQuery,
   AdminWorkerStatusResponse,
   DocumentLinkResponse,
+  AdminPackage,
   AdminPricingPlan,
   AdminPricingPlanCreateRequest,
   AdminPricingPlanUpdateRequest,
@@ -29,6 +31,8 @@ import type {
   AdminPricingSettingsResponse,
   AdminPricingSettingsUpdateRequest,
   AdminSubscriptionUpdateRequest,
+  AdminAccountingResponse,
+  AdminRevenueSplitItem,
 } from './adminTypes';
 
 /**
@@ -45,6 +49,7 @@ export function getAdminClients(query: AdminClientsQuery = {}): Promise<AdminCli
   const params = new URLSearchParams();
   if (query.q?.trim()) params.set('q', query.q.trim());
   if (query.income_source) params.set('income_source', query.income_source);
+  if (query.package) params.set('package', query.package);
   if (query.status) params.set('status', query.status);
   if (query.page !== undefined) params.set('page', String(query.page));
   if (query.page_size !== undefined) params.set('page_size', String(query.page_size));
@@ -101,6 +106,25 @@ export function updateAdminIncomeSource(
     },
   );
 }
+
+/**
+ * Actualiza el perfil y paquete del cliente (Story 10.6 AC #3).
+ * PATCH /api/admin/clients/{business_id}/profile
+ */
+export function updateClientProfile(
+  businessId: string,
+  data: AdminClientProfileUpdateRequest,
+): Promise<ClientDetailResponse> {
+  return apiFetch<ClientDetailResponse>(
+    `/api/admin/clients/${encodeURIComponent(businessId)}/profile`,
+    {
+      method: 'PATCH',
+      body: data,
+    },
+  );
+}
+
+export const updateAdminClientProfile = updateClientProfile;
 
 /**
  * Actualiza el perfil tributario del cliente (Story 8.6 AC #3).
@@ -315,15 +339,13 @@ export function deleteAdminPricingRate(id: string): Promise<void> {
 }
 
 /**
- * Consulta el historial de tarifas de un segmento (Story 9.2 AC #5).
+ * Consulta el historial de tarifas de un paquete (Story 9.2 AC #5, Story 10.6).
  */
 export function getAdminPricingRateHistory(
-  incomeSource: string,
-  taxpayerType: string,
+  pkg: AdminPackage | string,
 ): Promise<AdminPricingRateHistoryItem[]> {
   const params = new URLSearchParams({
-    income_source: incomeSource,
-    taxpayer_type: taxpayerType,
+    package: pkg,
   });
   return apiFetch<AdminPricingRateHistoryItem[]>(
     `/api/admin/pricing/rates/history?${params.toString()}`,
@@ -331,18 +353,16 @@ export function getAdminPricingRateHistory(
 }
 
 /**
- * Consulta la cotización para un segmento y plan (Story 9.2 AC #6).
+ * Consulta la cotización para un paquete y plan (Story 9.2 AC #6, Story 10.6).
  */
 export function getAdminPricingQuote(params: {
-  income_source: string;
-  taxpayer_type?: string;
-  person_type?: string;
+  package?: AdminPackage | string;
+  vat_responsible?: boolean;
   plan: string;
 }): Promise<AdminPricingQuote> {
   const qs = new URLSearchParams();
-  qs.set('income_source', params.income_source);
-  if (params.taxpayer_type) qs.set('taxpayer_type', params.taxpayer_type);
-  if (params.person_type) qs.set('person_type', params.person_type);
+  if (params.package) qs.set('package', params.package);
+  if (params.vat_responsible !== undefined) qs.set('vat_responsible', String(params.vat_responsible));
   qs.set('plan', params.plan);
   return apiFetch<AdminPricingQuote>(`/api/admin/pricing/quote?${qs.toString()}`);
 }
@@ -362,5 +382,53 @@ export function updateAdminSubscription(
     },
   );
 }
+
+// ==============================================================================
+// Story 10.6: Endpoints de Contabilidad y Reparto (AC #7 a #10)
+// ==============================================================================
+
+/**
+ * Consulta las métricas contables y de reparto para un año y mes opcional (Story 10.6 AC #7-#10).
+ * Sin month = año completo.
+ */
+export function getAccounting(
+  year: number,
+  month?: number | null,
+): Promise<AdminAccountingResponse> {
+  const params = new URLSearchParams();
+  params.set('year', String(year));
+  if (month !== undefined && month !== null && String(month).trim() !== '') {
+    params.set('month', String(month));
+  }
+  return apiFetch<AdminAccountingResponse>(`/api/admin/accounting?${params.toString()}`);
+}
+
+/**
+ * Consulta la configuración de porcentajes de reparto de ingresos (Story 10.6 AC #9).
+ */
+export function getRevenueSplit(): Promise<AdminRevenueSplitItem[]> {
+  return apiFetch<AdminRevenueSplitItem[]>('/api/admin/accounting/split');
+}
+
+/**
+ * Actualiza el porcentaje de reparto de ingresos para un paquete (Story 10.6 AC #9).
+ */
+export function updateRevenueSplit(
+  pkg: AdminPackage | string,
+  nyo_pct: string,
+): Promise<AdminRevenueSplitItem> {
+  return apiFetch<AdminRevenueSplitItem>(
+    `/api/admin/accounting/split/${encodeURIComponent(pkg)}`,
+    {
+      method: 'PUT',
+      body: { nyo_pct },
+    },
+  );
+}
+
+export const getAdminAccounting = getAccounting;
+export const getAdminRevenueSplit = getRevenueSplit;
+export const updateAdminRevenueSplit = updateRevenueSplit;
+
 
 

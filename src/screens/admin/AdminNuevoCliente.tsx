@@ -5,6 +5,7 @@ import type {
   AdminClientCreateRequest,
   AdminClientCreateResponse,
   AdminIncomeSource,
+  AdminPackage,
   AdminPersonType,
   AdminPlan,
   AdminPricingPlan,
@@ -14,6 +15,7 @@ import { ApiError, NETWORK_ERROR_MESSAGE } from '../../api/client';
 import { clientWhatsappUrl } from '../../config';
 import { IconCheck } from '../../components/icons';
 import { fmtDeadline, fmtMoney, fmtPercent } from '../../format';
+import { packageLabel } from './labels';
 
 export default function AdminNuevoCliente() {
   const [personType, setPersonType] = useState<AdminPersonType>('PERSONA');
@@ -24,6 +26,7 @@ export default function AdminNuevoCliente() {
   const [nit, setNit] = useState('');
   const [legalRepDoc, setLegalRepDoc] = useState('');
   const [plan, setPlan] = useState<AdminPlan>('TRIMESTRAL');
+  const [vatResponsible, setVatResponsible] = useState<boolean>(false);
   const [incomeSource, setIncomeSource] = useState<AdminIncomeSource>('DIAN');
 
   // Planes activos cargados dinámicamente desde la API (Story 9.3 AC #9)
@@ -61,16 +64,24 @@ export default function AdminNuevoCliente() {
     };
   }, []);
 
-  // Cotización dinámica al cambiar tipo de contribuyente, origen de ingresos o plan (AC #9)
+  function handleVatResponsibleChange(responsible: boolean) {
+    setVatResponsible(responsible);
+    if (responsible) {
+      setIncomeSource('DIAN');
+    }
+  }
+
+  // Cotización dinámica al cambiar paquete (según ¿Declara IVA?) o plan (AC #9, Story 10.6 AC #2)
   useEffect(() => {
     if (!plan) return;
     let mounted = true;
     setQuoteLoading(true);
     setQuoteError(null);
 
+    const pkg: AdminPackage = vatResponsible ? 'CON_IVA' : 'SIN_IVA';
+
     getAdminPricingQuote({
-      income_source: incomeSource,
-      person_type: personType,
+      package: pkg,
       plan,
     })
       .then((q) => {
@@ -84,6 +95,8 @@ export default function AdminNuevoCliente() {
           setQuote(null);
           if (err instanceof ApiError && (err.code === 'NO_RATE' || err.status === 409)) {
             setQuoteError(err.message || 'No hay tarifa vigente para este segmento.');
+          } else if (err instanceof ApiError && err.status === 422) {
+            setQuoteError(err.message || 'Paquete inválido.');
           } else if (err instanceof ApiError) {
             setQuoteError(err.message);
           } else {
@@ -98,7 +111,7 @@ export default function AdminNuevoCliente() {
     return () => {
       mounted = false;
     };
-  }, [personType, incomeSource, plan]);
+  }, [vatResponsible, plan]);
 
   // Validación de campos del formulario
   function validate(): string | null {
@@ -158,7 +171,8 @@ export default function AdminNuevoCliente() {
         contact_name: contactName.trim(),
         phone: phone.replace(/\D/g, ''),
         plan,
-        income_source: incomeSource,
+        vat_responsible: vatResponsible,
+        income_source: vatResponsible ? 'DIAN' : incomeSource,
       };
 
       if (personType === 'PERSONA') {
@@ -174,7 +188,13 @@ export default function AdminNuevoCliente() {
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.kind !== 'unauthorized' && err.kind !== 'forbidden') {
-          setError(err.message);
+          if (err.message === 'VAT_REQUIRES_EINVOICING' || (err as any).code === 'VAT_REQUIRES_EINVOICING') {
+            setError('Un declarante de IVA siempre factura electrónicamente.');
+          } else if (err.message === 'INVALID_PACKAGE' || (err as any).code === 'INVALID_PACKAGE') {
+            setError('Paquete de suscripción inválido.');
+          } else {
+            setError(err.message);
+          }
         }
       } else {
         setError(NETWORK_ERROR_MESSAGE);
@@ -528,24 +548,70 @@ export default function AdminNuevoCliente() {
             </select>
           </div>
 
-          {/* Selector de Tipo de negocio */}
+          {/* Campo "¿Declara IVA?" (Story 10.6 AC #2) */}
           <div className="field">
-            <label className="field-label" htmlFor="cliente-origen">
-              Tipo de negocio
+            <label className="field-label" id="label-declara-iva">
+              ¿Declara IVA?
             </label>
-            <select
-              id="cliente-origen"
-              className="field-input"
-              value={incomeSource}
-              onChange={(e) => setIncomeSource(e.target.value as AdminIncomeSource)}
-              disabled={busy}
-            >
-              <option value="DIAN">Facturador DIAN</option>
-              <option value="MANUAL_SALES">Ventas manuales</option>
-            </select>
+            <div className="admin-toggle-group" role="radiogroup" aria-labelledby="label-declara-iva">
+              <button
+                type="button"
+                role="radio"
+                aria-checked={vatResponsible}
+                className={`admin-toggle-btn ${vatResponsible ? 'active' : ''}`}
+                onClick={() => handleVatResponsibleChange(true)}
+                disabled={busy}
+              >
+                Sí
+              </button>
+              <button
+                type="button"
+                role="radio"
+                aria-checked={!vatResponsible}
+                className={`admin-toggle-btn ${!vatResponsible ? 'active' : ''}`}
+                onClick={() => handleVatResponsibleChange(false)}
+                disabled={busy}
+              >
+                No
+              </button>
+            </div>
           </div>
 
-          {/* Cotización dinámica (AC #9) */}
+          {/* Selector de Perfil (Story 10.6 AC #2) */}
+          <div className="field">
+            <label className="field-label" htmlFor="cliente-origen">
+              Perfil
+            </label>
+            {vatResponsible ? (
+              <div>
+                <input
+                  id="cliente-origen"
+                  type="text"
+                  className="field-input"
+                  value="Factura electrónica"
+                  readOnly
+                  disabled
+                />
+                <span className="field-hint">
+                  Un declarante de IVA siempre factura electrónicamente
+                </span>
+              </div>
+            ) : (
+              <select
+                id="cliente-origen"
+                className="field-input"
+                value={incomeSource}
+                onChange={(e) => setIncomeSource(e.target.value as AdminIncomeSource)}
+                disabled={busy}
+              >
+                <option value="DIAN">Factura electrónica</option>
+                <option value="MANUAL_SALES">Ventas</option>
+                <option value="MIXED">Mixto (factura + ventas)</option>
+              </select>
+            )}
+          </div>
+
+          {/* Cotización dinámica (AC #9, Story 10.6 AC #2) */}
           {quoteLoading ? (
             <div className="admin-quote-loading" aria-live="polite">
               <span className="admin-muted-text">Calculando cotización…</span>
@@ -557,7 +623,7 @@ export default function AdminNuevoCliente() {
           ) : quote ? (
             <div className="admin-quote-preview" aria-live="polite">
               <p className="admin-quote-text">
-                Valor del periodo: <strong>{fmtMoney(Number(quote.final_price))}</strong> (valor mensual{' '}
+                Paquete {packageLabel(quote.package)} · Valor del periodo: <strong>{fmtMoney(Number(quote.final_price))}</strong> (valor mensual{' '}
                 {fmtMoney(Number(quote.monthly_price))}, descuento {fmtPercent(Number(quote.discount_rate))} %)
               </p>
             </div>

@@ -3,11 +3,29 @@
  * Story 8.8 (AC #12).
  */
 
+export function packageLabel(pkg?: string | null): string {
+  if (!pkg) return '—';
+  if (pkg === 'CON_IVA') return 'Con IVA';
+  if (pkg === 'SIN_IVA') return 'Sin IVA';
+  return pkg;
+}
+
 export function incomeSourceLabel(source?: string | null): string {
   if (!source) return '—';
-  if (source === 'DIAN') return 'Facturador DIAN';
-  if (source === 'MANUAL_SALES') return 'Ventas manuales';
+  if (source === 'DIAN' || source === 'FACTURADOR') return 'Factura electrónica';
+  if (source === 'MANUAL_SALES' || source === 'VENTAS_MANUALES') return 'Ventas';
+  if (source === 'MIXED' || source === 'MIXTO') return 'Mixto (factura + ventas)';
   return source;
+}
+
+export const PARTNER_VISION_CONTABLE = 'Visión Contable (Konta)';
+export const PARTNER_NYO = 'NYO';
+
+export function partnerLabel(partner?: string | null): string {
+  if (!partner) return '—';
+  if (partner === 'VISION_CONTABLE' || partner === 'Konta') return PARTNER_VISION_CONTABLE;
+  if (partner === 'NYO') return PARTNER_NYO;
+  return partner;
 }
 
 export function planLabel(

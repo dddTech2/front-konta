@@ -10,6 +10,7 @@ import {
   ADMIN_PRICING_QUOTE,
 } from '../../test/fixtures';
 import { ME_ADMIN, mockApi, renderApp, resetSession } from '../../test/utils';
+import { getTodayBogota } from './AdminTarifas';
 
 beforeEach(() => {
   resetSession();
@@ -56,7 +57,7 @@ describe('Story 9.3: Panel web — Tarifas, precio del cliente y aviso de monto'
       ).toBeInTheDocument();
     });
 
-    it('muestra tabla 2×2 de tarifas vigentes, fechas de vigencia y botón Cambiar (AC #1)', async () => {
+    it('muestra tarjetas de tarifas vigentes por paquete, fechas de vigencia y botón Cambiar (AC #1)', async () => {
       mockApi({
         'GET /api/auth/me': { body: ME_ADMIN },
         'GET /api/admin/pricing': { body: ADMIN_PRICING },
@@ -65,18 +66,18 @@ describe('Story 9.3: Panel web — Tarifas, precio del cliente y aviso de monto'
       renderApp('/admin/tarifas');
 
       expect(
-        await screen.findByRole('heading', { name: 'Valor mensual por tipo de cliente' }),
+        await screen.findByRole('heading', { name: 'Valor mensual por paquete' }),
       ).toBeInTheDocument();
 
-      // Tarifas del fixture
-      expect(screen.getAllByText('$100.000').length).toBeGreaterThan(0);
+      // Tarifas del fixture (Con IVA y Sin IVA)
+      expect(screen.getByRole('heading', { name: 'Con IVA' })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: 'Sin IVA' })).toBeInTheDocument();
       expect(screen.getAllByText('$120.000').length).toBeGreaterThan(0);
-      expect(screen.getAllByText('$80.000').length).toBeGreaterThan(0);
-      expect(screen.getAllByText('$90.000').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('$100.000').length).toBeGreaterThan(0);
 
-      // Botón "Cambiar" en celdas
+      // Botón "Cambiar" en tarjetas
       const changeButtons = await screen.findAllByRole('button', { name: 'Cambiar' });
-      expect(changeButtons.length).toBeGreaterThanOrEqual(4);
+      expect(changeButtons).toHaveLength(2);
     });
 
     it('cambiar tarifa: abre modal, valida y envía POST a /api/admin/pricing/rates (AC #1)', async () => {
@@ -84,7 +85,7 @@ describe('Story 9.3: Panel web — Tarifas, precio del cliente y aviso de monto'
       const updatedPricing = {
         ...ADMIN_PRICING,
         rates: ADMIN_PRICING.rates.map((r) =>
-          r.income_source === 'DIAN' && r.taxpayer_type === 'PERSONA_NATURAL'
+          r.package === 'CON_IVA'
             ? { ...r, monthly_price: '110000.00' }
             : r,
         ),
@@ -97,10 +98,9 @@ describe('Story 9.3: Panel web — Tarifas, precio del cliente y aviso de monto'
           status: 200,
           body: {
             id: 'rate-1',
-            income_source: 'DIAN',
-            taxpayer_type: 'PERSONA_NATURAL',
+            package: 'CON_IVA',
             monthly_price: '110000.00',
-            effective_from: '2026-10-15',
+            effective_from: getTodayBogota(),
           },
         },
       });
@@ -121,7 +121,7 @@ describe('Story 9.3: Panel web — Tarifas, precio del cliente y aviso de monto'
 
       const inputDate = within(dialog).getByLabelText('Fecha de vigencia');
       await user.clear(inputDate);
-      await user.type(inputDate, '2026-10-15');
+      await user.type(inputDate, getTodayBogota()); // la vigencia no puede ser anterior a hoy
 
       api.set('GET /api/admin/pricing', { body: updatedPricing });
 
@@ -134,10 +134,9 @@ describe('Story 9.3: Panel web — Tarifas, precio del cliente y aviso de monto'
         );
         expect(postCall).toBeDefined();
         expect(postCall?.body).toEqual({
-          income_source: 'DIAN',
-          taxpayer_type: 'PERSONA_NATURAL',
+          package: 'CON_IVA',
           monthly_price: 110000,
-          effective_from: '2026-10-15',
+          effective_from: getTodayBogota(),
         });
       });
 
@@ -183,7 +182,7 @@ describe('Story 9.3: Panel web — Tarifas, precio del cliente y aviso de monto'
       });
     });
 
-    it('ver historial por segmento: abre modal con GET /api/admin/pricing/rates/history (AC #5)', async () => {
+    it('ver historial por paquete: abre modal con GET /api/admin/pricing/rates/history (AC #5)', async () => {
       const user = userEvent.setup();
       mockApi({
         'GET /api/auth/me': { body: ME_ADMIN },
@@ -202,8 +201,8 @@ describe('Story 9.3: Panel web — Tarifas, precio del cliente y aviso de monto'
       expect(dialog).toBeInTheDocument();
 
       expect(await within(dialog).findAllByText('Admin Principal')).toHaveLength(2);
-      expect(within(dialog).getByText('$90.000')).toBeInTheDocument();
-      expect(within(dialog).getByText('$100.000')).toBeInTheDocument();
+      expect(within(dialog).getByText('$110.000')).toBeInTheDocument();
+      expect(within(dialog).getByText('$120.000')).toBeInTheDocument();
     });
 
     it('planes y descuentos: editar en fila y guardar envía PUT a /api/admin/pricing/plans/{code} (AC #2)', async () => {

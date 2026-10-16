@@ -309,6 +309,10 @@
   grid-template-columns: 1fr;
 }
 
+.admin-grid-3 {
+  grid-template-columns: 1fr;
+}
+
 .admin-grid-4 {
   grid-template-columns: repeat(2, 1fr);
 }
@@ -316,6 +320,10 @@
 @media (min-width: 768px) {
   .admin-grid-2 {
     grid-template-columns: repeat(2, 1fr);
+  }
+
+  .admin-grid-3 {
+    grid-template-columns: repeat(3, 1fr);
   }
 
   .admin-grid-4 {
@@ -1580,6 +1588,38 @@
   color: var(--verde);
 }
 
+/* Tarjetas de tarifas por paquete (Story 10.6 AC #1) */
+.admin-rates-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+  margin-top: 12px;
+  margin-bottom: 24px;
+}
+
+.admin-rate-package-card {
+  background: #fbfbfa;
+  border: 1px solid #e7e5df;
+  border-radius: 14px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.admin-rate-package-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.admin-rate-package-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--verde);
+  margin: 0;
+}
+
 /* Tarifas móvil */
 .admin-rate-mobile-card {
   background: var(--blanco);
@@ -2037,4 +2077,502 @@
 
 .admin-shell .result-count {
   font-size: 12px;
+}
+
+/* ==========================================================================
+   Story 10.6: Estilos de Paquetes, Perfil y Reparto (AC #3, #4, #5, #6)
+   ========================================================================== */
+
+/* Chips de paquete y perfil en la cabecera de la ficha */
+.admin-ficha-chips-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.admin-ficha-header-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.admin-pill-badge {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 2px 10px;
+  border-radius: 999px;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.admin-pill-package {
+  background: rgba(30, 52, 49, 0.08);
+  color: var(--verde);
+  border: 1px solid rgba(30, 52, 49, 0.15);
+}
+
+.admin-pill-profile {
+  background: rgba(76, 119, 104, 0.12);
+  color: var(--verde-tint);
+  border: 1px solid rgba(76, 119, 104, 0.2);
+}
+
+.admin-badge-package {
+  display: inline-block;
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+  background: rgba(30, 52, 49, 0.06);
+  color: var(--verde);
+}
+
+/* Alerta ámbar de discrepancia de cotización vs paquete actual (AC #4) */
+.admin-amber-alert {
+  background: #fef7e0;
+  border: 1px solid #f9ab00;
+  color: #7a4f01;
+  padding: 10px 14px;
+  border-radius: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+  font-size: 13.5px;
+  font-weight: 500;
+}
+
+.admin-btn-amber-action {
+  color: #7a4f01;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0;
+  background: none;
+  border: none;
+}
+
+.admin-btn-amber-action:hover {
+  color: #533500;
+}
+
+/* Nota informativa en modales (AC #3) */
+.admin-notice-box {
+  background: rgba(30, 52, 49, 0.05);
+  border-left: 3px solid var(--verde);
+  padding: 10px 14px;
+  border-radius: 6px;
+  margin: 14px 0;
+}
+
+/* ==========================================================================
+   Story 10.6: Pantalla Contabilidad y Reparto (AC #7 a #10)
+   ========================================================================== */
+
+.admin-contabilidad-screen {
+  padding-bottom: 32px;
+}
+
+.admin-contabilidad-content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Selector de año y mes (AC #7) */
+.admin-accounting-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.admin-select-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.admin-select-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--verde);
+}
+
+.admin-select-input {
+  height: 38px;
+  border: 1px solid #dcd8d0;
+  border-radius: 8px;
+  padding: 4px 10px;
+  background: var(--blanco);
+  color: var(--gris-oscuro);
+  font-family: var(--font-body);
+  font-size: 13.5px;
+}
+
+.admin-select-input:focus-visible {
+  outline: 2px solid var(--terracota);
+  outline-offset: 1px;
+}
+
+/* Desglose en tarjetas KPI */
+.admin-metric-sub {
+  font-size: 12px;
+  color: var(--gris-medio);
+}
+
+.admin-metric-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 6px;
+  font-size: 11.5px;
+  color: var(--gris-medio);
+  border-top: 1px solid #f0ede6;
+  padding-top: 4px;
+}
+
+/* Gráfica de barras apiladas SVG (AC #8) */
+.admin-chart-card {
+  overflow: hidden;
+}
+
+.admin-chart-legend {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 12.5px;
+  color: var(--gris-oscuro);
+}
+
+.admin-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.admin-legend-box {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  display: inline-block;
+}
+
+.admin-legend-con-iva {
+  background: #1e3431;
+}
+
+.admin-legend-sin-iva {
+  background: #4c7768;
+}
+
+.admin-chart-container {
+  width: 100%;
+  overflow-x: auto;
+  padding: 10px 0 4px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.admin-svg-wrapper {
+  width: 100%;
+  min-width: 540px;
+}
+
+.admin-chart-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.admin-chart-val-label {
+  font-size: 10px;
+  font-weight: 700;
+  fill: var(--verde);
+}
+
+.admin-chart-axis-label {
+  font-size: 11px;
+  font-weight: 600;
+  fill: var(--gris-oscuro);
+}
+
+.admin-chart-year-label {
+  font-size: 9.5px;
+  fill: var(--gris-medio);
+}
+
+/* Sección Reparto (AC #9) */
+.admin-split-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.admin-split-table th,
+.admin-split-table td {
+  vertical-align: middle;
+}
+
+.admin-text-right {
+  text-align: right !important;
+}
+
+.admin-split-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.admin-pct-pill {
+  background: rgba(30, 52, 49, 0.08);
+  color: var(--verde);
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.admin-table-total-row td {
+  border-top: 2px solid var(--verde);
+  font-weight: 700;
+  background: rgba(30, 52, 49, 0.02);
+}
+
+/* Proyección mensual (mrr_split) */
+.admin-mrr-split-box {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid #efede7;
+}
+
+.admin-mrr-split-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+@media (min-width: 640px) {
+  .admin-mrr-split-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.admin-mrr-partner-card {
+  background: var(--gris-claro);
+  border-radius: 12px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.admin-mrr-partner-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--verde);
+}
+
+.admin-mrr-partner-total {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--verde);
+}
+
+.admin-mrr-partner-sub {
+  font-size: 11.5px;
+  color: var(--gris-medio);
+}
+
+/* Modal de edición de porcentajes (AC #9) */
+.admin-split-form-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin: 16px 0;
+}
+
+.admin-split-package-group {
+  padding-bottom: 14px;
+  border-bottom: 1px solid #efede7;
+}
+
+.admin-split-package-group:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.admin-split-group-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--verde);
+  margin: 0 0 8px;
+}
+
+.admin-split-input-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.admin-split-input-field {
+  flex: 1;
+  min-width: 120px;
+}
+
+.admin-split-mirror-field {
+  flex: 1.5;
+  min-width: 180px;
+}
+
+.admin-split-example-text {
+  font-size: 12.5px;
+  color: var(--verde-tint);
+  font-weight: 600;
+  margin: 8px 0 0;
+}
+
+/* Detalle de pagos del periodo (AC #10) */
+.admin-payment-client-link {
+  font-weight: 600;
+  color: var(--verde);
+  text-decoration: underline;
+}
+
+.admin-payment-client-link:hover {
+  color: var(--terracota);
+}
+
+.admin-payment-cards-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.admin-payment-mobile-card {
+  background: var(--blanco);
+  border: 1px solid #efede7;
+  border-radius: 12px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.admin-payment-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin-payment-card-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.admin-payment-date {
+  color: var(--gris-medio);
+  font-size: 12px;
+}
+
+.admin-payment-total {
+  color: var(--verde);
+  font-size: 14px;
+}
+
+.admin-payment-card-split {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding-top: 8px;
+  border-top: 1px solid #f4f4f2;
+}
+
+.admin-split-chip {
+  background: var(--gris-claro);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 11.5px;
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.admin-split-chip-label {
+  color: var(--gris-medio);
+}
+
+/* Área táctil de 44 px en celular (Story 8.8 / AC #10) */
+@media (max-width: 639px) {
+  .admin-accounting-controls {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .admin-select-group {
+    flex: 1;
+  }
+
+  .admin-select-input {
+    width: 100%;
+    min-height: 44px;
+  }
+
+  .admin-payment-client-link {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .admin-split-card .admin-btn-action {
+    width: 100%;
+    min-height: 44px;
+  }
+
+  .admin-chart-legend {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+}
+
+
+/* Reparto: el botón baja de línea en pantallas angostas (Story 10.6, 360 px) */
+.admin-split-card .admin-card-head {
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.admin-split-card .admin-card-head > div {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+
+.admin-input-suffix-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin-input-suffix {
+  color: var(--gris-medio);
+  font-weight: 600;
+}
+
+.admin-split-card .field-input[aria-invalid="true"],
+.admin-dialog-form .field-input[aria-invalid="true"] {
+  border-color: var(--terracota);
 }
