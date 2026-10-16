@@ -18,6 +18,11 @@ export function incomeSourceLabel(source?: string | null): string {
   return source;
 }
 
+/** El alta sin correo genera uno interno (`...@cliente.kontable.co`) solo para la base; no es del cliente. */
+export function isPlaceholderEmail(email?: string | null): boolean {
+  return !email || email.toLowerCase().endsWith('@cliente.kontable.co');
+}
+
 export const PARTNER_VISION_CONTABLE = 'Visión Contable (Konta)';
 export const PARTNER_NYO = 'NYO';
 

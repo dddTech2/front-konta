@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   incomeSourceLabel,
+  isPlaceholderEmail,
   packageLabel,
   partnerLabel,
   paymentMethodLabel,
@@ -123,6 +124,15 @@ describe('labels (Story 8.8 AC #12, Story 10.6)', () => {
       expect(timeAgo(null)).toBe('sin señal');
       expect(timeAgo(undefined)).toBe('sin señal');
       expect(timeAgo(NaN)).toBe('sin señal');
+    });
+  });
+
+  describe('isPlaceholderEmail', () => {
+    it('reconoce el correo interno que genera el alta sin correo', () => {
+      expect(isPlaceholderEmail('anderson.cortes@cliente.kontable.co')).toBe(true);
+      expect(isPlaceholderEmail('Ana.1234.1@CLIENTE.KONTABLE.CO')).toBe(true);
+      expect(isPlaceholderEmail(null)).toBe(true);
+      expect(isPlaceholderEmail('carlos@laespiga.com')).toBe(false);
     });
   });
 });

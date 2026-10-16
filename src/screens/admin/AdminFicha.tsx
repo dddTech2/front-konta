@@ -47,7 +47,7 @@ import {
   recentMonths,
 } from '../../format';
 import { useResource } from '../../hooks/useResource';
-import { incomeSourceLabel, packageLabel, paymentMethodLabel, planLabel } from './labels';
+import { incomeSourceLabel, isPlaceholderEmail, packageLabel, paymentMethodLabel, planLabel } from './labels';
 
 function statusBadge(status?: string | null) {
   const s = (status || '').toUpperCase();
@@ -910,10 +910,12 @@ export default function AdminFicha() {
                       <span className="admin-kv-key">Nombre</span>
                       <strong className="admin-kv-val">{contact.full_name}</strong>
                     </div>
-                    <div className="admin-kv-item">
-                      <span className="admin-kv-key">Correo</span>
-                      <span className="admin-kv-val">{contact.email}</span>
-                    </div>
+                    {!isPlaceholderEmail(contact.email) && (
+                      <div className="admin-kv-item">
+                        <span className="admin-kv-key">Correo</span>
+                        <span className="admin-kv-val">{contact.email}</span>
+                      </div>
+                    )}
                     <div className="admin-kv-item">
                       <span className="admin-kv-key">Celular</span>
                       <div className="admin-kv-val admin-phone-actions">
