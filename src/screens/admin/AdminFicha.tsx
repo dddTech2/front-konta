@@ -101,6 +101,26 @@ function friendlyExtractionError(errorCode?: string | null): { text: string; cod
   }
 }
 
+/** Suma meses a una fecha ISO `YYYY-MM-DD` ajustando al último día del mes (igual que `add_months_to_date`). */
+function addMonthsIso(iso: string, months: number): string {
+  const [y, m, d] = iso.split('-').map(Number);
+  const total = m - 1 + months;
+  const year = y + Math.floor(total / 12);
+  const month = ((total % 12) + 12) % 12;
+  const lastDay = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+  const day = Math.min(d, lastDay);
+  return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
+
+/**
+ * Corte que queda al pasar a un plan de otra duración: inicio del periodo en curso (corte actual menos
+ * los meses del plan anterior) más los meses del plan nuevo. `null` si el corte no cambia.
+ */
+export function planChangeCutoff(cutoffIso: string | null | undefined, oldMonths: number, newMonths: number) {
+  if (!cutoffIso || !oldMonths || !newMonths || oldMonths === newMonths) return null;
+  return addMonthsIso(addMonthsIso(cutoffIso, -oldMonths), newMonths);
+}
+
 function computeSubPeriodPreview(
   currentSub: any,
   plansList: AdminPricingPlan[],
@@ -2075,13 +2095,33 @@ export default function AdminFicha() {
                         subSpecialDiscount,
                         subSelectedPlan,
                       );
+                      const monthsOf = (code: string) =>
+                        pricingPlans.find((p) => p.code === code)?.months ??
+                        ({ TRIMESTRAL: 3, SEMESTRAL: 6, ANUAL: 12 } as Record<string, number>)[code] ??
+                        0;
+                      const newCutoff =
+                        subChangeMode === 'plan'
+                          ? planChangeCutoff(
+                              subscription.cutoff_date,
+                              monthsOf(subscription.plan),
+                              monthsOf(subSelectedPlan),
+                            )
+                          : null;
                       return (
                         <div className="admin-sub-preview-box" aria-live="polite">
                           <p className="admin-sub-preview-text">
                             Valor del periodo: <strong>{fmtMoney(beforeFinal)}</strong> →{' '}
                             <strong className="text-accent">{fmtMoney(afterFinal)}</strong>
                           </p>
-                          <p className="admin-muted-note">Las fechas de corte no cambian.</p>
+                          {newCutoff ? (
+                            <p className="admin-muted-note">
+                              Próximo corte: {fmtDeadline(subscription.cutoff_date ?? '')} →{' '}
+                              <strong>{fmtDeadline(newCutoff)}</strong> (se cuenta desde el inicio del periodo en
+                              curso).
+                            </p>
+                          ) : (
+                            <p className="admin-muted-note">Las fechas de corte no cambian.</p>
+                          )}
                         </div>
                       );
                     })()}
