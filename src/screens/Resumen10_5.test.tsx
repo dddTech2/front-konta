@@ -120,6 +120,6 @@ describe('Story 10.5: marca Konta', () => {
     mockApi({});
     renderApp('/login');
 
-    expect(await screen.findByText('Con K, contabilidad para emprendedores')).toBeInTheDocument();
+    expect(await screen.findByText('Contabilidad con K, para emprendedores')).toBeInTheDocument();
   });
 });

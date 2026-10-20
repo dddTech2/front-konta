@@ -911,13 +911,13 @@ describe('Resumen (ventas manuales)', () => {
 });
 
 describe('Login', () => {
-  it('la pantalla de Login muestra el slogan «Con K, contabilidad para emprendedores» y el título «Ingresa a Konta»', async () => {
+  it('la pantalla de Login muestra el slogan «Contabilidad con K, para emprendedores» y el título «Ingresa a Konta»', async () => {
     resetSession();
     mockApi({});
     renderApp('/login');
 
     expect(await screen.findByRole('heading', { name: 'Ingresa a Konta' })).toBeInTheDocument();
-    expect(screen.getByText('Con K, contabilidad para emprendedores')).toBeInTheDocument();
+    expect(screen.getByText('Contabilidad con K, para emprendedores')).toBeInTheDocument();
   });
 });
 
