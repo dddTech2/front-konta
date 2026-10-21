@@ -16,7 +16,11 @@ import Documentos from '../Documentos';
 import Historial from '../Historial';
 import IvaDetail from '../IvaDetail';
 import Resumen from '../Resumen';
+import DemoLogin from './DemoLogin';
 import { incomeSourceLabel, packageLabel, planLabel } from './labels';
+
+/** Presentación: elegir el tipo de cliente → ingreso simulado → panel del cliente. */
+type PresentStage = 'off' | 'choose' | 'login' | 'panel';
 
 const PROFILE_IDS: DemoProfileId[] = ['con-iva-fe', 'sin-iva-fe', 'sin-iva-ventas', 'sin-iva-mixto'];
 
@@ -40,7 +44,8 @@ export default function AdminDemo() {
   }, [currentProfileId, firstTab]);
 
   // Modo presentación (pantalla completa sin selector ni precios)
-  const [isPresentation, setIsPresentation] = useState(false);
+  const [stage, setStage] = useState<PresentStage>('off');
+  const isPresentation = stage !== 'off';
 
   // Formulario y confirmación de ventas para perfiles con ventas manuales
   const [salesOpen, setSalesOpen] = useState(false);
@@ -75,7 +80,7 @@ export default function AdminDemo() {
 
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape') {
-        setIsPresentation(false);
+        setStage('off');
       }
     }
 
@@ -156,19 +161,18 @@ export default function AdminDemo() {
         </div>
         <div className="admin-demo-actions">
           {isPresentation ? (
-            <button
-              type="button"
-              className="btn-outline demo-btn-exit"
-              onClick={() => setIsPresentation(false)}
-            >
-              Salir de la presentación
-            </button>
+            <>
+              {stage !== 'choose' && (
+                <button type="button" className="btn-link" onClick={() => setStage('choose')}>
+                  Cambiar tipo de cliente
+                </button>
+              )}
+              <button type="button" className="btn-outline demo-btn-exit" onClick={() => setStage('off')}>
+                Salir de la presentación
+              </button>
+            </>
           ) : (
-            <button
-              type="button"
-              className="btn-outline demo-btn-present"
-              onClick={() => setIsPresentation(true)}
-            >
+            <button type="button" className="btn-outline demo-btn-present" onClick={() => setStage('choose')}>
               Presentar
             </button>
           )}
@@ -199,7 +203,36 @@ export default function AdminDemo() {
         </div>
       )}
 
+      {/* Presentación, paso 1: qué tipo de cliente mostrar */}
+      {stage === 'choose' && (
+        <section className="demo-choose" aria-labelledby="demo-choose-title">
+          <h2 id="demo-choose-title" className="demo-choose-title">
+            ¿Qué tipo de cliente quieres mostrar?
+          </h2>
+          <div className="demo-choose-grid">
+            {PROFILE_IDS.map((id) => {
+              const p = DEMO_PROFILES[id];
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  className="demo-choose-btn"
+                  onClick={() => {
+                    handleSelectProfile(id);
+                    setStage('login');
+                  }}
+                >
+                  <strong>{`${packageLabel(p.package)} · ${incomeSourceLabel(p.incomeSource)}`}</strong>
+                  <span>{p.lineText}</span>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
       {/* Vista principal: Marco del cliente + Qué incluye */}
+      {stage !== 'choose' && (
       <div className="demo-content-layout">
         {/* Marco de celular del cliente (AC #3) */}
         <section className="demo-phone-wrapper" aria-label="Vista del cliente en celular">
@@ -208,6 +241,14 @@ export default function AdminDemo() {
               Demostración · datos de ejemplo
             </div>
 
+            {stage === 'login' ? (
+              <DemoLogin
+                onEnter={() => {
+                  setActiveTab(firstTab);
+                  setStage('panel');
+                }}
+              />
+            ) : (
             <DemoAuthProvider me={profile.me}>
               <div className="shell">
                 <header className="shell-header">
@@ -225,6 +266,19 @@ export default function AdminDemo() {
                     </span>
                     <div className="shell-actions">
                       <SalesMenuItem onOpen={() => setSalesOpen(true)} />
+                      {stage === 'panel' && (
+                        <button
+                          className="btn-link"
+                          type="button"
+                          onClick={() => {
+                            setSalesOpen(false);
+                            setConfirmation(null);
+                            setStage('login');
+                          }}
+                        >
+                          Salir
+                        </button>
+                      )}
                     </div>
                   </div>
                 </header>
@@ -265,6 +319,7 @@ export default function AdminDemo() {
                 <main className="shell-main">{renderScreen(activeTab)}</main>
               </div>
             </DemoAuthProvider>
+            )}
           </div>
         </section>
 
@@ -367,6 +422,7 @@ export default function AdminDemo() {
           </div>
         </aside>
       </div>
+      )}
     </div>
   );
 }

@@ -2613,12 +2613,14 @@
 
 .admin-demo-actions {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 12px;
 }
 
 .demo-btn-present,
 .demo-btn-exit {
+  width: auto;
   min-height: 44px;
   padding: 10px 20px;
   font-weight: 700;
@@ -2943,4 +2945,61 @@
 
 .admin-demo-presenting .demo-content-layout {
   justify-content: center;
+}
+
+/* Presentación: elegir el tipo de cliente e ingreso simulado (Story 10.7) */
+.demo-choose {
+  max-width: 760px;
+  margin: 24px auto;
+}
+
+.demo-choose-title {
+  font-family: var(--font-display);
+  font-size: 24px;
+  color: var(--verde);
+  text-align: center;
+  margin: 0 0 20px;
+}
+
+.demo-choose-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 14px;
+}
+
+.demo-choose-btn {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 44px;
+  padding: 18px 20px;
+  border: 1px solid #dcd9d0;
+  border-radius: 16px;
+  background: var(--blanco);
+  color: var(--gris-oscuro);
+  font-family: var(--font-body);
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.demo-choose-btn strong {
+  color: var(--verde);
+  font-size: 16px;
+}
+
+.demo-choose-btn:hover {
+  border-color: var(--verde);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+}
+
+.demo-choose-btn:focus-visible {
+  outline: 2px solid var(--verde);
+  outline-offset: 2px;
+}
+
+.demo-phone .demo-login {
+  min-height: 560px;
+  padding-top: 32px;
 }

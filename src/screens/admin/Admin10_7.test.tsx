@@ -244,7 +244,7 @@ describe('Story 10.7: Panel de Demostración de Tipos de Cliente', () => {
     expect(screen.getByText('Trimestral')).toBeInTheDocument();
   });
 
-  it('"Presentar" oculta selector y precio, y Esc vuelve a la vista normal (AC #7)', async () => {
+  it('"Presentar": elegir tipo, ingreso simulado, panel; Esc vuelve a la vista normal (AC #7)', async () => {
     const user = userEvent.setup();
     mockApi({
       'GET /api/auth/me': { body: ME_ADMIN },
@@ -259,13 +259,33 @@ describe('Story 10.7: Panel de Demostración de Tipos de Cliente', () => {
     const btnPresentar = screen.getByRole('button', { name: 'Presentar' });
     await user.click(btnPresentar);
 
-    // Selector y precio ya no están
+    // Paso 1: elegir el tipo de cliente
+    expect(screen.getByRole('heading', { name: '¿Qué tipo de cliente quieres mostrar?' })).toBeInTheDocument();
     expect(screen.queryByRole('tablist', { name: 'Tipos de cliente para demostración' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('heading', { name: 'Precio' })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /Sin IVA · Ventas/ }));
 
-    // Marco y Qué incluye siguen visibles
-    expect(screen.getAllByText('Distribuciones La Ceiba S.A.S.')[0]).toBeInTheDocument();
+    // Paso 2: ingreso simulado; acepta cualquier NIT y cualquier código, sin llamar a la API
+    expect(screen.getByRole('heading', { name: 'Ingresa a Konta' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Precio' })).not.toBeInTheDocument();
+    await user.type(screen.getByLabelText('Celular o NIT'), '123');
+    await user.click(screen.getByRole('button', { name: 'Enviarme el código' }));
+    await user.type(screen.getByLabelText('Código de 6 dígitos'), '1');
+    await user.click(screen.getByRole('button', { name: 'Entrar' }));
+
+    // Paso 3: panel del cliente elegido y Qué incluye
+    const phoneNav = await screen.findByRole('navigation', { name: 'Secciones' });
+    expect(within(phoneNav).getAllByRole('link').map((t) => t.textContent?.trim())).toEqual([
+      'Resumen',
+      'Facturas',
+      'Documentos',
+    ]);
     expect(screen.getByRole('heading', { name: 'Qué incluye este paquete' })).toBeInTheDocument();
+
+    // Salir del panel del cliente vuelve al ingreso
+    await user.click(
+      within(screen.getByRole('region', { name: 'Vista del cliente en celular' })).getByRole('button', { name: 'Salir' }),
+    );
+    expect(screen.getByRole('heading', { name: 'Ingresa a Konta' })).toBeInTheDocument();
 
     const btnSalir = screen.getByRole('button', { name: 'Salir de la presentación' });
     expect(btnSalir).toBeInTheDocument();
