@@ -152,6 +152,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
+/**
+ * Proveedor de sesión simulada para el marco de demostración (Story 10.7, AC #3, #5).
+ * Provee un AuthContextValue fijo para el perfil seleccionado sin efectos colaterales de red.
+ */
+export function DemoAuthProvider({ me, children }: { me: Me; children: ReactNode }) {
+  const value = useMemo<AuthContextValue>(
+    () => ({
+      status: 'ready',
+      me,
+      suspended: null,
+      networkError: false,
+      isSuspended: false,
+      login: async () => {},
+      logout: () => {},
+      refreshMe: async () => true,
+    }),
+    [me],
+  );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
+
 export function useAuth(): AuthContextValue {
   const value = useContext(AuthContext);
   if (!value) throw new Error('useAuth debe usarse dentro de <AuthProvider>.');

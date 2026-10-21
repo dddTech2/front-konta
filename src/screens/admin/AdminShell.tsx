@@ -4,6 +4,7 @@ import { BRAND_NAME } from '../../brand';
 import isotipoOscuro from '../../assets/brand/isotipo-oscuro.svg';
 import AdminClientes from './AdminClientes';
 import AdminContabilidad from './AdminContabilidad';
+import AdminDemo from './AdminDemo';
 import AdminFicha from './AdminFicha';
 import AdminNuevoCliente from './AdminNuevoCliente';
 import AdminOperacion from './AdminOperacion';
@@ -13,6 +14,7 @@ import AdminTarifas from './AdminTarifas';
 export {
   AdminClientes,
   AdminContabilidad,
+  AdminDemo,
   AdminFicha,
   AdminNuevoCliente,
   AdminOperacion,
@@ -56,6 +58,9 @@ export default function AdminShell() {
           <NavLink to="/admin/contabilidad" className={({ isActive }) => (isActive ? 'active' : '')}>
             Contabilidad
           </NavLink>
+          <NavLink to="/admin/demo" className={({ isActive }) => (isActive ? 'active' : '')}>
+            Demostración
+          </NavLink>
           <NavLink to="/admin/operacion" className={({ isActive }) => (isActive ? 'active' : '')}>
             Operación
           </NavLink>
@@ -69,6 +74,7 @@ export default function AdminShell() {
             <Route path="clientes/:businessId" element={<AdminFicha />} />
             <Route path="tarifas" element={<AdminTarifas />} />
             <Route path="contabilidad" element={<AdminContabilidad />} />
+            <Route path="demo" element={<AdminDemo />} />
             <Route path="operacion" element={<AdminOperacion />} />
             <Route path="*" element={<Navigate to="/admin" replace />} />
           </Routes>

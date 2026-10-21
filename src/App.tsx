@@ -1,10 +1,11 @@
-import { useState, type ComponentType, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Navigate, NavLink, Route, Routes, useLocation } from 'react-router-dom';
 import { hasManualSales, isAdmin, isMixed, showsIva } from './api/client';
 import type { SaleResponse } from './api/types';
 import { useAuth } from './auth/AuthContext';
 import { BRAND_NAME } from './brand';
 import isotipoOscuro from './assets/brand/isotipo-oscuro.svg';
+import { clientSections } from './clientSections';
 import SalesForm from './components/SalesForm';
 import SalesMenuItem from './components/SalesMenuItem';
 import { fmtMoneyExact } from './format';
@@ -83,36 +84,6 @@ function RequireSession({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
-interface Section {
-  path: string;
-  label: string;
-}
-
-interface DianSection extends Section {
-  Screen: ComponentType<{ businessId: string }>;
-}
-
-const DIAN_SECTIONS: DianSection[] = [
-  { path: '/inicio', label: 'Inicio', Screen: Dashboard },
-  { path: '/iva', label: 'IVA', Screen: IvaDetail },
-  { path: '/historial', label: 'Facturas', Screen: Historial },
-  { path: '/calendario', label: 'Calendario', Screen: Calendario },
-  { path: '/documentos', label: 'Documentos', Screen: Documentos },
-];
-
-const MANUAL_SECTIONS: Section[] = [
-  { path: '/resumen', label: 'Resumen' },
-  { path: '/historial', label: 'Facturas' },
-  { path: '/documentos', label: 'Documentos' },
-];
-
-const MIXED_SECTIONS: Section[] = [
-  { path: '/resumen', label: 'Resumen' },
-  { path: '/historial', label: 'Facturas' },
-  { path: '/calendario', label: 'Calendario' },
-  { path: '/documentos', label: 'Documentos' },
-];
-
 function Shell() {
   const { logout, me } = useAuth();
   const [salesOpen, setSalesOpen] = useState(false);
@@ -131,12 +102,7 @@ function Shell() {
   const mixed = isMixed(me);
   const manual = !mixed && hasManualSales(me);
   const showIvaTab = showsIva(me);
-
-  const sections = mixed
-    ? MIXED_SECTIONS
-    : manual
-      ? MANUAL_SECTIONS
-      : DIAN_SECTIONS.filter((s) => s.path !== '/iva' || showIvaTab);
+  const sections = clientSections(me);
 
   return (
     <div className="shell">

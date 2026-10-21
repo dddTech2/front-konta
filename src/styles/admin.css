@@ -2576,3 +2576,371 @@
 .admin-dialog-form .field-input[aria-invalid="true"] {
   border-color: var(--terracota);
 }
+
+
+/* ==============================================================================
+   Story 10.7: Panel de Demostración de Tipos de Cliente
+   ============================================================================== */
+
+.admin-demo {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.admin-demo-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.admin-demo-title {
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--verde);
+  margin: 0 0 6px;
+}
+
+.admin-demo-sub {
+  color: var(--gris-medio);
+  font-size: 14px;
+  margin: 0;
+  max-width: 600px;
+}
+
+.admin-demo-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.demo-btn-present,
+.demo-btn-exit {
+  min-height: 44px;
+  padding: 10px 20px;
+  font-weight: 700;
+  cursor: pointer;
+  border-radius: 12px;
+}
+
+/* Selector de perfiles (AC #2) */
+.demo-selector-group {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  background: var(--blanco);
+  padding: 8px;
+  border-radius: 16px;
+  border: 1px solid #e8e6df;
+}
+
+.demo-selector-btn {
+  flex: 1 1 180px;
+  min-height: 44px;
+  padding: 10px 16px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--gris-oscuro);
+  font-family: var(--font-body);
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.15s ease;
+}
+
+.demo-selector-btn:hover {
+  background: var(--gris-claro);
+}
+
+.demo-selector-btn:focus-visible {
+  outline: 2px solid var(--verde);
+  outline-offset: 2px;
+}
+
+.demo-selector-btn.active {
+  background: var(--verde);
+  color: var(--blanco);
+  font-weight: 700;
+}
+
+/* Disposición principal (AC #3, #6) */
+.demo-content-layout {
+  display: flex;
+  gap: 32px;
+  align-items: flex-start;
+}
+
+@media (max-width: 900px) {
+  .demo-content-layout {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .demo-info-panel {
+    width: 100%;
+    max-width: 480px;
+  }
+}
+
+/* Marco de celular del cliente (AC #3) */
+.demo-phone-wrapper {
+  flex-shrink: 0;
+  width: 100%;
+  max-width: 400px;
+}
+
+.demo-phone {
+  width: 100%;
+  max-width: 400px;
+  border: 1px solid #dcd9d0;
+  border-radius: 28px;
+  overflow: hidden;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+  background: var(--gris-claro);
+  position: relative;
+}
+
+.demo-phone .shell {
+  min-height: auto;
+  max-width: 100%;
+}
+
+.demo-phone .shell-nav a {
+  cursor: pointer;
+}
+
+.demo-ribbon {
+  background: #e8f5e9;
+  color: #1e3431;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+  padding: 6px 12px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  letter-spacing: 0.2px;
+}
+
+/* Panel lateral "Qué incluye este paquete" (AC #6) */
+.demo-info-panel {
+  flex: 1 1 340px;
+  min-width: 0;
+}
+
+.demo-info-card {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.demo-info-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border-bottom: 1px solid #f0eee8;
+  padding-bottom: 18px;
+}
+
+.demo-info-section:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.demo-badge {
+  display: inline-block;
+  align-self: flex-start;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--beige);
+  color: var(--verde);
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+.demo-line-text {
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--verde);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.demo-section-heading {
+  font-family: var(--font-body);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--verde);
+  margin: 0;
+}
+
+.demo-features-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.demo-feature-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 13.5px;
+  color: var(--gris-oscuro);
+  line-height: 1.4;
+}
+
+.demo-check-icon {
+  color: var(--verde-tint, #4c7768);
+  font-weight: 800;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+/* Lista de comandos en Telegram */
+.demo-telegram-list {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.demo-telegram-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 13px;
+}
+
+.demo-telegram-cmd {
+  font-family: monospace;
+  font-weight: 700;
+  color: var(--terracota-dark, #8b341f);
+  font-size: 13px;
+}
+
+.demo-telegram-desc {
+  margin: 0;
+  color: var(--gris-medio);
+}
+
+/* Sección de precios */
+.demo-pricing-section {
+  background: #fbfaf7;
+  padding: 16px;
+  border-radius: 14px;
+  border: 1px solid #ece9e0;
+}
+
+.demo-pricing-loading {
+  color: var(--gris-medio);
+  font-size: 13px;
+  margin: 0;
+}
+
+.demo-pricing-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--terracota);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.demo-retry-pricing {
+  min-height: 44px;
+  cursor: pointer;
+  padding: 8px 12px;
+  font-weight: 700;
+}
+
+.demo-pricing-content {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.demo-current-rate {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.demo-rate-label {
+  font-size: 13px;
+  color: var(--gris-medio);
+}
+
+.demo-rate-amount {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--verde);
+}
+
+.demo-plans-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid #ece9e0;
+}
+
+.demo-plans-title {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--gris-medio);
+}
+
+.demo-plan-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.demo-plan-name {
+  color: var(--gris-oscuro);
+}
+
+.demo-plan-discount {
+  margin-left: 6px;
+  color: var(--verde-tint, #4c7768);
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.demo-plan-price {
+  font-weight: 700;
+  color: var(--verde);
+}
+
+/* Modo Presentación (AC #7) */
+.admin-demo-presenting {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: var(--blanco);
+  overflow-y: auto;
+  padding: 24px 32px;
+}
+
+.admin-demo-presenting .admin-demo-header {
+  border-bottom: 1px solid #f0eee8;
+  padding-bottom: 16px;
+  margin-bottom: 24px;
+}
+
+.admin-demo-presenting .demo-content-layout {
+  justify-content: center;
+}

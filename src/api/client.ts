@@ -6,6 +6,8 @@
  * Nunca se intercambian 401 y 403 (ADR-005).
  */
 
+import { resolveDemo } from '../demo/demoApi';
+
 const API_BASE: string = (import.meta.env.VITE_API_BASE ?? '').replace(/\/+$/, '');
 
 /** Devuelve la URL anteponiendo API_BASE si está configurado. */
@@ -176,6 +178,11 @@ export interface RequestOptions {
 }
 
 export async function apiFetch<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  // Desvío de demostración: resuelve en memoria sin llamar a fetch ni a los manejadores de 401/403/red (Story 10.7, AC #4, #5)
+  if (/^\/api\/[^/]+\/demo-/.test(path)) {
+    return resolveDemo<T>(path, options);
+  }
+
   const { method = 'GET', body, auth = true } = options;
   const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
   const headers: Record<string, string> = { Accept: 'application/json' };
